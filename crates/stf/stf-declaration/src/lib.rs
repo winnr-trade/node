@@ -84,6 +84,12 @@ where
     pub warp: Warp<S>,
     /// The ValueSetter module (recommended as a starting point for building new modules)
     pub value_setter: value_setter::ValueSetter<S>,
+    /// The Market module, responsible for managing markets and questions.
+    pub market: market::MarketModule<S>,
+    /// The Orderbook module, responsible for managing orders and trades.
+    pub orderbook: orderbook::OrderbookModule<S>,
+    /// The Shielded Pool module, responsible for managing private transactions.
+    pub shielded_pool: shielded_pool::ShieldedPoolModule<S>,
     /// The StateConsistency module, used for acceptance testing
     #[cfg(feature = "acceptance-testing")]
     pub state_consistency: sov_test_state_consistency::StateConsistency<S>,

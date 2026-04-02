@@ -1,0 +1,12 @@
+[package]
+name = "shared-types"
+description = "Shared types for other modules"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+borsh = { workspace = true, features = ["derive"] }
+serde = { workspace = true }
+schemars = { workspace = true }
+anyhow = { workspace = true }
+sov-modules-api = { workspace = true }

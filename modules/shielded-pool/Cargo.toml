@@ -1,0 +1,50 @@
+[package]
+name = "shielded-pool"
+description = "Shielded pool module for management of private balances"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+light-poseidon = "0.4.0"
+ark-bn254 = "0.5.0"
+ark-ff = "0.5.0"
+ark-circom = "0.5.0"
+ark-groth16 = "0.5.0"
+# p3-bn254 = "0.5.1"
+
+# Shared types
+shared-types = { workspace = true }
+
+# Circuit library (Poseidon2 hash)
+# circuits-lib = { path = "../../crates/circuits/lib" }
+
+# SP1 Groth16 proof verification
+# sp1-verifier = { version = "6.0.2" }
+
+# Sovereign SDK
+sov-modules-api = { workspace = true }
+sov-state = { workspace = true }
+sov-bank = { workspace = true }
+sov-chain-state = { workspace = true }
+
+# Serialization
+borsh = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+[features]
+default = []
+native = [
+    "sov-modules-api/native",
+    "sov-state/native",
+    "sov-bank/native",
+    "sov-chain-state/native",
+]

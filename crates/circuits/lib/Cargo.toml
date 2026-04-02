@@ -1,0 +1,14 @@
+[package]
+name = "circuits-lib"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+alloy-sol-types = { version = "1.0", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+slop-algebra = "6.0.2"
+slop-baby-bear = "6.0.2"
+slop-symmetric = "6.0.2"

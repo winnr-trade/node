@@ -1,0 +1,92 @@
+openapi: 3.0.2
+info:
+  title: Market API
+  version: 0.1.0
+paths:
+  /status:
+    get:
+      summary: Get market module status
+      operationId: "get_market_status"
+      tags: [Market]
+      responses:
+        "200":
+          description: Market module status
+          content:
+            application/text:
+              schema:
+                type: string
+  /markets/list/{from_id}:
+    get:
+      summary: List markets starting from a given ID
+      operationId: "list_markets"
+      tags: [Market]
+      parameters:
+        - name: from_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          $ref: "#/components/responses/MarketListResponse"
+  /markets/{market_id}:
+    get:
+      summary: Get market details by ID
+      operationId: "get_market"
+      tags: [Market]
+      parameters:
+        - name: market_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          $ref: "#/components/responses/MarketResponse"
+        "404":
+          $ref: "#/components/responses/NotFoundResponse"
+
+components:
+  schemas:
+    Market:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        price:
+          type: number
+          format: float
+    MarketList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Market"
+  responses:
+    MarketListResponse:
+      description: A list of markets
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Market"
+    MarketResponse:
+      description: A single market
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Market"
+    NotFoundResponse:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: Not found

@@ -1,0 +1,54 @@
+{
+  "markets": [
+    {
+      "question": "Will Bitcoin close above $80,000 on Dec 31, 2026?",
+      "resolver": "0x0000000000000000000000000000000000000001",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will Ethereum reach a new all-time high before July 1, 2026?",
+      "resolver": "0x0000000000000000000000000000000000000002",
+      "resolution_time": 1782931200
+    },
+    {
+      "question": "Will the S&P 500 index close above 6000 by the end of 2026?",
+      "resolver": "0x0000000000000000000000000000000000000003",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will Solana (SOL) price exceed $500 before Jan 1, 2027?",
+      "resolver": "0x0000000000000000000000000000000000000004",
+      "resolution_time": 1798828800
+    },
+    {
+      "question": "Will the price of gold surpass $3,000 per ounce in 2026?",
+      "resolver": "0x0000000000000000000000000000000000000005",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will US inflation fall below 2% in any quarter of 2026?",
+      "resolver": "0x0000000000000000000000000000000000000006",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will Apple (AAPL) stock split again before 2027?",
+      "resolver": "0x0000000000000000000000000000000000000007",
+      "resolution_time": 1798828800
+    },
+    {
+      "question": "Will Uniswap (UNI) reach a $50 price in 2026?",
+      "resolver": "0x0000000000000000000000000000000000000008",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will the 10-year US Treasury yield exceed 6% in 2026?",
+      "resolver": "0x0000000000000000000000000000000000000009",
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will Dogecoin (DOGE) be in the top 10 cryptocurrencies by market cap on Jan 1, 2027?",
+      "resolver": "0x000000000000000000000000000000000000000A",
+      "resolution_time": 1798828800
+    }
+  ]
+}

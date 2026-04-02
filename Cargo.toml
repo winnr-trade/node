@@ -7,11 +7,25 @@ members = [
   "crates/stf",
   "crates/stf/stf-declaration",
   "crates/utils/node-discovery",
+  "crates/circuits/lib",
+  "crates/circuits/program",
+  "crates/circuits/script",
   "examples/value-setter", 
   "scripts/acceptance-test",
   "scripts/soak-test",
+  "modules/shared-types",
+  "modules/orderbook",
+  "modules/market", 
+  "modules/shielded-pool"
 ]
 default-members = ["crates/rollup", "crates/utils/node-discovery"]
+
+# Temporarily exclude the circuits crates
+exclude = [
+  "crates/circuits/lib",
+  "crates/circuits/program",
+  "crates/circuits/script"
+]
 
 [workspace.package]
 version = "0.3.0"
@@ -19,9 +33,13 @@ edition = "2021"
 license = "Sovereign Permissionless Commercial License"
 authors = ["Sovereign Labs <info@sovereign.xyz>"]
 publish = false
-rust-version = "1.88"
+rust-version = "1.94.0"
 
 [workspace.dependencies]
+shared-types = { path = "modules/shared-types" }
+market = { path = "modules/market" }
+orderbook = { path = "modules/orderbook" }
+shielded-pool = { path = "modules/shielded-pool" }
 sov-address = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "e8f4eb439cba3fb1154a58ebe5a30cb963b95d05", features = [
   "evm",
 ] }
@@ -85,10 +103,11 @@ prometheus_exporter = "0.8.5"
 sha2 = { version = "=0.10.9", default-features = false }
 
 schemars = { version = "0.8.21", features = ["derive"] }
+thiserror = "2.0"
 anyhow = { version = "1.0.95" }
 clap = { version = "4.4.10", features = ["derive"] }
 async-trait = "0.1.71"
-borsh = { version = "1", features = ["rc", "bytes"] }
+borsh = { version = "1", features = ["derive", "rc", "bytes"] }
 tracing = { version = "0.1.40", default-features = false }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 tracing-appender = "0.2"

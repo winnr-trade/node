@@ -1,0 +1,20 @@
+{
+  "name": "rest-api-test",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@sovereign-sdk/modules": "^0.3.2",
+    "@sovereign-sdk/signers": "^0.5.2",
+    "@sovereign-sdk/utils": "^0.0.4",
+    "@sovereign-sdk/web3": "^0.13.1",
+    "axios": "^1.13.6",
+    "bech32": "^2.0.0"
+  }
+}
