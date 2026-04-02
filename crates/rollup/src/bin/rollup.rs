@@ -14,8 +14,9 @@ use sov_stf_runner::{from_toml_path, RollupConfig};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use sov_address::EthereumAddress;
+// use sov_address::EthereumAddress;
 use sov_modules_api::capabilities::RollupHeight;
+use sov_modules_api::Base58Address;
 
 #[cfg(all(
     feature = "mock_da",
@@ -165,8 +166,9 @@ async fn new_rollup(
         "Starting rollup with config"
     );
 
-    let rollup_config: RollupConfig<EthereumAddress, DaService> =
-        from_toml_path(&rollup_config_path).with_context(|| {
+    // let rollup_config: RollupConfig<EthereumAddress, DaService> =
+    let rollup_config: RollupConfig<Base58Address, DaService> = from_toml_path(&rollup_config_path)
+        .with_context(|| {
             format!(
                 "Failed to read rollup configuration from {}",
                 rollup_config_path.to_str().unwrap()

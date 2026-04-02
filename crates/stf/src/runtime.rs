@@ -1,7 +1,8 @@
 #![allow(unused_doc_comments)]
 //! This module implements `Runtime` trait and ensures that it uses correct `CHAIN_HASH`
-use sov_address::{EthereumAddress, FromVmAddress};
-use sov_eip712_auth::{SchemaProvider, Secp256k1CryptoSpec};
+// use sov_address::{EthereumAddress, FromVmAddress};
+use sov_eip712_auth::SchemaProvider;
+// use sov_eip712_auth::{SchemaProvider, Secp256k1CryptoSpec};
 use sov_hyperlane_integration::HyperlaneAddress;
 use sov_modules_api::capabilities::TransactionAuthenticator;
 #[cfg(feature = "native")]
@@ -18,8 +19,8 @@ pub use stf_starter_declaration::RuntimeCall;
 #[cfg(feature = "native")]
 pub use stf_starter_declaration::RuntimeSubcommand;
 
-use crate::authentication::EvmAndEip712Authenticator;
-use crate::authentication::EvmAndEip712AuthenticatorInput;
+// use crate::authentication::EvmAndEip712Authenticator;
+// use crate::authentication::EvmAndEip712AuthenticatorInput;
 
 // CHAIN_HASH and Schema are generated during build time.
 // This allows make sure that Runtime can be authenticated in ZKVM guest.
@@ -30,11 +31,13 @@ mod __generated {
 #[derive(Clone, Default)]
 pub struct Runtime<S: Spec>(pub(crate) RuntimeInner<S>)
 where
-    <S as Spec>::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>;
+    // <S as Spec>::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>,
+    <S as Spec>::Address: HyperlaneAddress;
 
 impl<S: Spec> SchemaProvider for Runtime<S>
 where
-    S::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>,
+    S::Address: HyperlaneAddress,
+    // S::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>,
 {
     const SCHEMA_BORSH: &'static [u8] = __generated::SCHEMA_BORSH;
 }
@@ -42,8 +45,9 @@ where
 impl<S: Spec> sov_modules_stf_blueprint::Runtime<S> for Runtime<S>
 where
     S::Da: DaSpec,
-    S::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>,
-    S::CryptoSpec: Secp256k1CryptoSpec,
+    S::Address: HyperlaneAddress,
+    // S::Address: HyperlaneAddress + FromVmAddress<EthereumAddress>,
+    // S::CryptoSpec: Secp256k1CryptoSpec,
 {
     // Make runtime authenticated.
     const CHAIN_HASH: [u8; 32] = __generated::CHAIN_HASH;
@@ -56,7 +60,8 @@ where
     #[cfg(feature = "native")]
     type ModuleExecutionConfig = sov_evm::execution_config::EvmExecutionConfig;
 
-    type Auth = EvmAndEip712Authenticator<S, Self, Self>;
+    // type Auth = EvmAndEip712Authenticator<S, Self, Self>;
+    type Auth = sov_modules_api::capabilities::RollupAuthenticator<S, Self>;
 
     #[cfg(feature = "native")]
     fn endpoints(api_state: sov_modules_api::rest::ApiState<S>) -> sov_modules_api::NodeEndpoints {
@@ -99,11 +104,12 @@ where
     fn wrap_call(
         auth_data: <Self::Auth as TransactionAuthenticator<S>>::Decodable,
     ) -> Self::Decodable {
-        match auth_data {
-            EvmAndEip712AuthenticatorInput::Evm(call) => Self::Decodable::Evm(call),
-            EvmAndEip712AuthenticatorInput::Eip712(call) => call,
-            EvmAndEip712AuthenticatorInput::Standard(call) => call,
-        }
+        // match auth_data {
+        //     EvmAndEip712AuthenticatorInput::Evm(call) => Self::Decodable::Evm(call),
+        //     EvmAndEip712AuthenticatorInput::Eip712(call) => call,
+        //     EvmAndEip712AuthenticatorInput::Standard(call) => call,
+        // }
+        auth_data
     }
 
     fn is_unauthorized_system_tx(

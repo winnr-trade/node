@@ -2,27 +2,29 @@ import { getTokenId } from "@sovereign-sdk/modules";
 import {
   bank,
   rollup,
-  signerAddress,
+  userAddress,
   tokenDeployerAddress,
   tokenDeployerSigner,
 } from "../config";
-import { hexToBytes } from "@sovereign-sdk/utils";
 import { bech32m } from "bech32";
+import b58 from "bs58";
 import { testUsd } from "../../../test-data/token/data.json";
 
 export const getTokenMetadata = async (tokenId: string) => {
   try {
     const token = await bank.tokenMetadata(tokenId);
     return token;
-  } catch (error) {
-    // console.log("error", error);
-    return null;
+  } catch (error: any) {
+    if (error.status === 404) {
+      return null; // Token not found, return null
+    }
+    throw error; // Rethrow other errors
   }
 };
 
 export const createToken = async () => {
   const tokenIdBytes = getTokenId(
-    hexToBytes(tokenDeployerAddress),
+    b58.decode(tokenDeployerAddress),
     testUsd.name,
     testUsd.decimals,
   );
@@ -39,12 +41,14 @@ export const createToken = async () => {
           token_decimals: testUsd.decimals,
           initial_balance: Number(testUsd.initialBalance),
           supply_cap: Number(testUsd.supplyCap),
-          mint_to_address: signerAddress,
+          mint_to_address: userAddress,
           admins: [],
         },
       },
     };
+
     const res = await rollup.call(callMessage, { signer: tokenDeployerSigner });
+
     token = await bank.tokenMetadata(tokenId);
   }
 

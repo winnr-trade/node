@@ -1,3 +1,10 @@
+// import { Keypair } from "@solana/web3.js";
+// import bs58 from "bs58";
+// const pk = "5087c12ea7c12024b3f798c5d73587463af17c9fce04d9e6fe873893102a6c64";
+// const secretKey = Uint8Array.from(Buffer.from(pk, "hex"));
+// const kp = Keypair.fromSeed(secretKey);
+// console.log("kp:", kp.publicKey.toBase58(), kp.secretKey.toHex());
+
 import { market, rollup } from "./config";
 import { createToken } from "./apis/bank";
 import {

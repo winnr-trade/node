@@ -1,4 +1,4 @@
-import { rollup, signer } from "../config";
+import { rollup, userSigner } from "../config";
 
 export const placeOrder = async (
   marketId: number,
@@ -26,6 +26,6 @@ export const placeOrder = async (
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: signer });
+  const res = await rollup.call(callMessage, { signer: userSigner });
   return res;
 };

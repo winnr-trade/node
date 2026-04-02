@@ -2,9 +2,9 @@ import {
   adminAddress,
   adminSigner,
   chainState,
-  minterSigner,
+  tokenMinterSigner,
   rollup,
-  signer,
+  userSigner,
 } from "../config";
 import testMarketData from "../../../test-data/market/data.json";
 
@@ -39,7 +39,7 @@ export const createMarket = async (collateralTokenId: string) => {
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: minterSigner });
+  const res = await rollup.call(callMessage, { signer: tokenMinterSigner });
   return res;
 };
 
@@ -58,7 +58,7 @@ export const createMarkets = async (collateralTokenId: string) => {
       },
     };
 
-    const res = await rollup.call(callMessage, { signer: minterSigner });
+    const res = await rollup.call(callMessage, { signer: tokenMinterSigner });
     // console.log(`Created market with question: "${marketData.question}"`);
   }
 };
@@ -73,5 +73,5 @@ export const mintShares = async (marketId: number, amount: number) => {
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: signer });
+  const res = await rollup.call(callMessage, { signer: userSigner });
 };

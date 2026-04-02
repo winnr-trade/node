@@ -4,13 +4,13 @@
     "enable_custom_account_mappings": false
   },
   "operator_incentives": {
-    "reward_address": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"
+    "reward_address": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
   },
   "attester_incentives": {
     "minimum_attester_bond": [1000, 1000],
     "minimum_challenger_bond": [1000, 1000],
     "initial_attesters": [
-      ["1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6", "200000"]
+      ["0xA6edfca3AA985Dd3CC728BFFB700933a986aC085", "200000"]
     ],
     "rollup_finality_period": 5,
     "maximum_attested_height": 0,
@@ -21,15 +21,41 @@
       "token_name": "sov-token",
       "address_and_balances": [
         [
-          "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+          "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
           "1000000000000000000000000000000000"
         ],
         [
-          "5vCwW7JrPAZVq6Q9dUqLBQbzrrshRMP5nh8pV82VcX2y",
+          "0xe7d2b7610d1574610cbd903ea896c59d17470633",
           "1000000000000000000000000000000000"
-        ]
+        ],
+        ["0x23B6445f524daDee9fb576627740AaD23Afbe8b7", "1000000000"],
+        ["0x9b08ce57a93751aE790698A2C9ebc76A78F23E25", "1000000000"],
+        ["0xB14D211d69aff5190451b336bDe0975b57555D36", "1000000000"],
+        ["0xe78B5e6d2BfF36b462cc29772526Dd4EBF42E98b", "1000000000"],
+        ["0x0E0BcFa6A9D9C5694B754Aa3BF86360EE23eb52B", "1000000000"],
+        [
+          "0xc13b65f7c53Cd6db2EA205a4b574b4a0858720A6",
+          "10000000000000000000000000000"
+        ],
+        [
+          "0xBaEb92889696217A3A6be2175E5a95dC4cFFC9f7",
+          "10000000000000000000000000000"
+        ],
+        [
+          "0x2b9A8bdd2fe54C75116986f2fa892210A5f22915",
+          "10000000000000000000000000000"
+        ],
+        [
+          "0xca7f2cF9b6d765334A4A9D5744e57563EA76C602",
+          "10000000000000000000000000000"
+        ],
+        [
+          "0x74bb92E136628E7028e2290fF60A8EC83Eea904f",
+          "10000000000000000000000000000"
+        ],
+        ["0x267d5F5Ba12AcD07Ce5D0831B17aB5927fEBCd48", "1000000000"]
       ],
-      "admins": ["1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"]
+      "admins": ["0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"]
     },
     "tokens": []
   },
@@ -43,7 +69,7 @@
   "paymaster": {
     "payers": [
       {
-        "payer_address": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+        "payer_address": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
         "policy": {
           "default_payee_policy": {
             "allow": {}
@@ -62,13 +88,13 @@
     "proving_penalty": [10, 10],
     "minimum_bond": [1000, 1000],
     "initial_provers": [
-      ["1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6", "200000"]
+      ["0xA6edfca3AA985Dd3CC728BFFB700933a986aC085", "200000"]
     ]
   },
   "sequencer_registry": {
     "minimum_bond": "5000",
     "sequencer_config": {
-      "seq_rollup_address": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+      "seq_rollup_address": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
       "seq_da_address": "0000000000000000000000000000000000000000000000000000000000000000",
       "seq_bond": "100000000000000000000000000000000",
       "is_preferred_sequencer": true
@@ -83,14 +109,14 @@
   "warp": null,
   "value_setter": null,
   "market": {
-    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+    "admin": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
     "config": {
       "max_question_length": 100,
       "min_market_duration": 60
     }
   },
   "orderbook": {
-    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+    "admin": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
     "fee_config": {
       "maker_fee_bps": 10,
       "taker_fee_bps": 20,
@@ -99,17 +125,17 @@
     }
   },
   "shielded_pool": {
-    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"
+    "admin": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
   },
   "evm": {
     "accounts": [],
     "contract_creation_policy": "everyone",
     "initial_base_fee": 10,
     "genesis_timestamp": 0,
-    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+    "admin": "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
     "chain_spec": {
       "limit_contract_code_size": 524288,
-      "coinbase": "11111111111111111111111111111111",
+      "coinbase": "0x0000000000000000000000000000000000000000",
       "block_gas_limit": 1000000000,
       "tx_gas_limit": 1000000000,
       "base_fee_params": {

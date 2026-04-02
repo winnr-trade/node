@@ -10,11 +10,13 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.98.4",
     "@sovereign-sdk/modules": "^0.3.2",
     "@sovereign-sdk/signers": "^0.5.2",
     "@sovereign-sdk/utils": "^0.0.4",
     "@sovereign-sdk/web3": "^0.13.1",
     "axios": "^1.13.6",
-    "bech32": "^2.0.0"
+    "bech32": "^2.0.0",
+    "bs58": "^6.0.0"
   }
 }
