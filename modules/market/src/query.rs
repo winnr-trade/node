@@ -6,7 +6,7 @@ use sov_modules_api::rest::utils::{errors, ApiResult, Path, Query};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};
 
-use crate::{Market, MarketModule};
+use crate::{Market, MarketModule, Position, PositionKey};
 
 const LIMIT_MARKET_LIST: u64 = 10;
 
@@ -55,6 +55,25 @@ impl<S: Spec> MarketModule<S> {
 
         Ok(market.into())
     }
+
+    async fn route_outcome_shares(
+        state: ApiState<S, Self>,
+        mut acc: ApiStateAccessor<S>,
+        Path((market_id, user_address)): Path<(MarketId, S::Address)>,
+    ) -> ApiResult<Position> {
+        let position_id = PositionKey {
+            market_id,
+            address: user_address,
+        };
+
+        let position = state
+            .positions
+            .get(&position_id, &mut acc)
+            .unwrap_infallible()
+            .ok_or_else(|| errors::not_found_404("Position", position_id))?;
+
+        Ok(position.into())
+    }
 }
 
 impl<S: Spec> HasCustomRestApi for MarketModule<S> {
@@ -65,6 +84,10 @@ impl<S: Spec> HasCustomRestApi for MarketModule<S> {
             .route("/status", get(Self::route_status))
             .route("/list", get(Self::route_market_list))
             .route("/:marketId", get(Self::route_market))
+            .route(
+                "/:marketId/shares/:userAddress",
+                get(Self::route_outcome_shares),
+            )
             .with_state(state.with(self.clone()))
     }
 
