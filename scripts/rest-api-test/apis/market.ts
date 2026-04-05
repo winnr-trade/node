@@ -8,15 +8,15 @@ import {
 } from "../config";
 import testMarketData from "../../../test-data/market/data.json";
 
-export const setSupportedCollateralToken = async (
-  tokenId: string,
-  support: boolean,
-) => {
+export const setSupportedCollateralToken = async (params: {
+  tokenId: string;
+  support: boolean;
+}) => {
   const callMessage = {
     market: {
       set_supported_collateral_token: {
-        token_id: tokenId,
-        support,
+        token_id: params.tokenId,
+        support: params.support,
       },
     },
   };
@@ -25,16 +25,21 @@ export const setSupportedCollateralToken = async (
   return res;
 };
 
-export const createMarket = async (collateralTokenId: string) => {
+export const createMarket = async (params: {
+  question: string;
+  collateralTokenId: string;
+  resolutionTime: number;
+  resolver: string;
+}) => {
   const currentTime = await chainState.time();
 
   const callMessage = {
     market: {
       create_market: {
-        question: "Will it rain tomorrow?",
-        collateral_token: collateralTokenId,
-        resolution_time: currentTime + 864_000, // 24 hours from now
-        resolver: adminAddress,
+        question: params.question,
+        collateral_token: params.collateralTokenId,
+        resolution_time: params.resolutionTime, // 24 hours from now
+        resolver: params.resolver,
       },
     },
   };

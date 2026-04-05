@@ -3,54 +3,116 @@
 // const pk = "5087c12ea7c12024b3f798c5d73587463af17c9fce04d9e6fe873893102a6c64";
 // const secretKey = Uint8Array.from(Buffer.from(pk, "hex"));
 // const kp = Keypair.fromSeed(secretKey);
-// console.log("kp:", kp.publicKey.toBase58(), kp.secretKey.toHex());
+// const kp = Keypair.generate();
+// console.log("kp:", kp.publicKey.toBase58(), kp.secretKey.toHex().slice(0, 64));
 
-import { market, rollup } from "./config";
-import { createToken } from "./apis/bank";
 import {
-  createMarkets,
+  adminAddress,
+  chainState,
+  market,
+  rollup,
+  tokenDeployerAddress,
+} from "./config";
+import { createToken, getTokenId, getTokenMetadata } from "./apis/bank";
+import {
+  createMarket,
   mintShares,
   setSupportedCollateralToken,
 } from "./apis/market";
 import { placeOrder } from "./apis/orderbook";
+import { testUsd } from "../../test-data/token/data.json";
+import testMarketData from "../../test-data/market/data.json";
 
 const main = async () => {
   console.log("Rollup context:", rollup.context);
-  console.log("Creating token...");
 
-  const token = await createToken();
-  console.log("Token:", token);
-
-  console.log("Setting token as supported collateral...");
-  await setSupportedCollateralToken(token.id, true);
-
-  console.log("Creating market...");
-  const marketCount = await market.getNextMarketId();
-  if (marketCount === 0) {
-    await createMarkets(token.id);
+  const tokenId = getTokenId({
+    deployer: tokenDeployerAddress,
+    name: testUsd.name,
+    decimals: testUsd.decimals,
+  });
+  let token = await getTokenMetadata(tokenId);
+  if (!token) {
+    console.log("Token not found, creating test token...");
+    token = await createToken({
+      name: testUsd.name,
+      decimals: testUsd.decimals,
+      initialBalance: parseInt(testUsd.initialBalance),
+      supplyCap: parseInt(testUsd.supplyCap),
+    });
+    console.log("Test token created:", tokenId);
+  } else {
+    console.log("Test token already exists:", tokenId);
   }
 
-  console.log("Providing liquidity to market...");
+  await setSupportedCollateralToken({ tokenId, support: true });
+
+  const marketCount = await market.getNextMarketId();
+  const currentTime = await chainState.time();
+
+  if (marketCount > 0) {
+    console.log(`Test markets already exist (count: ${marketCount})`);
+    return;
+  }
+
+  console.log("Creating test markets...");
+  for (const m of testMarketData.markets) {
+    await createMarket({
+      question: m.question,
+      collateralTokenId: tokenId,
+      resolutionTime: currentTime + 864_000, // 24 hours from now
+      resolver: adminAddress,
+    });
+  }
   const marketId = 0;
-  await mintShares(marketId, 10000);
-  // await placeOrder(0, "yes", 50, 100, "ask", "limit");
-  // await placeOrder(0, "no", 60, 100, "ask", "limit");
+  console.log(`Providing liquidity to market...`);
+  await mintShares(marketId, 1000);
+
+  console.log("Placing test orders...");
 
   // Place asks (sellers) at various price levels
   for (let price = 60; price <= 100; price += 10) {
-    await placeOrder(marketId, "yes", price, 100, "ask", "limit");
-    await placeOrder(marketId, "no", price, 100, "ask", "limit");
+    await placeOrder({
+      marketId,
+      outcome: "yes",
+      price,
+      quantity: 100,
+      side: "ask",
+      orderType: "limit",
+    });
+    await placeOrder({
+      marketId,
+      outcome: "no",
+      price,
+      quantity: 100,
+      side: "ask",
+      orderType: "limit",
+    });
   }
 
   // Place bids (buyers) at various price levels
   for (let price = 40; price <= 80; price += 10) {
-    await placeOrder(marketId, "yes", price, 100, "bid", "limit");
-    await placeOrder(marketId, "no", price, 100, "bid", "limit");
+    await placeOrder({
+      marketId,
+      outcome: "yes",
+      price,
+      quantity: 100,
+      side: "bid",
+      orderType: "limit",
+    });
+    await placeOrder({
+      marketId,
+      outcome: "no",
+      price,
+      quantity: 100,
+      side: "bid",
+      orderType: "limit",
+    });
   }
 
   // Optionally, place some market orders to create fills
-  await placeOrder(marketId, "yes", 100, 50, "bid", "market");
-  await placeOrder(marketId, "no", 100, 50, "bid", "market");
+  // await placeOrder(marketId, "yes", 100, 50, "bid", "market");
+  // await placeOrder(marketId, "no", 100, 50, "bid", "market");
 };
 
 main()

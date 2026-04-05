@@ -1,13 +1,10 @@
 {
   "testUsd": {
     "name": "test-usd",
-    "decimals": 8,
-    "initialBalance": "10000000",
-    "mintToAddress": "0x9b08ce57a93751aE790698A2C9ebc76A78F23E25",
-    "supplyCap": "100000000000",
-    "admins": [
-      "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085",
-      "0x9b08ce57a93751aE790698A2C9ebc76A78F23E25"
-    ]
+    "decimals": 6,
+    "initialBalance": "100000000000000000",
+    "mintToAddress": "",
+    "supplyCap": "1000000000000000000",
+    "admins": ["1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"]
   }
 }

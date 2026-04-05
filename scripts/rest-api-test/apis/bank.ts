@@ -1,10 +1,11 @@
-import { getTokenId } from "@sovereign-sdk/modules";
+import { getTokenId as _getTokenId } from "@sovereign-sdk/modules";
 import {
   bank,
   rollup,
   userAddress,
   tokenDeployerAddress,
   tokenDeployerSigner,
+  tokenMinterAddress,
 } from "../config";
 import { bech32m } from "bech32";
 import b58 from "bs58";
@@ -22,35 +23,71 @@ export const getTokenMetadata = async (tokenId: string) => {
   }
 };
 
-export const createToken = async () => {
-  const tokenIdBytes = getTokenId(
-    b58.decode(tokenDeployerAddress),
-    testUsd.name,
-    testUsd.decimals,
+export const getTokenId = (params: {
+  deployer: string;
+  name: string;
+  decimals: number;
+}) => {
+  const tokenIdBytes = _getTokenId(
+    b58.decode(params.deployer),
+    params.name,
+    params.decimals,
   );
   const tokenId = bech32m.encode("token_", bech32m.toWords(tokenIdBytes));
-  let token = await getTokenMetadata(tokenId);
+  return tokenId;
+};
 
-  if (token) {
-    // console.log("Token already exists:", token);
-  } else {
-    const callMessage = {
-      bank: {
-        create_token: {
-          token_name: testUsd.name,
-          token_decimals: testUsd.decimals,
-          initial_balance: Number(testUsd.initialBalance),
-          supply_cap: Number(testUsd.supplyCap),
-          mint_to_address: userAddress,
-          admins: [],
+export const createToken = async (params: {
+  name: string;
+  decimals: number;
+  initialBalance: number;
+  supplyCap: number;
+}) => {
+  const createMessage = {
+    bank: {
+      create_token: {
+        token_name: params.name,
+        token_decimals: params.decimals,
+        initial_balance: params.initialBalance,
+        supply_cap: params.supplyCap,
+        mint_to_address: userAddress,
+        admins: [tokenMinterAddress],
+      },
+    },
+  };
+
+  const res = await rollup.call(createMessage, {
+    signer: tokenDeployerSigner,
+  });
+
+  const tokenId = getTokenId({
+    deployer: tokenDeployerAddress,
+    name: testUsd.name,
+    decimals: testUsd.decimals,
+  });
+  const token = await bank.tokenMetadata(tokenId);
+
+  return token;
+};
+
+export const transferTokens = async (
+  tokenId: string,
+  toAddress: string,
+  amount: number,
+) => {
+  const transferMessage = {
+    bank: {
+      transfer: {
+        to: toAddress,
+        coins: {
+          amount: amount,
+          token_id: tokenId,
         },
       },
-    };
+    },
+  };
 
-    const res = await rollup.call(callMessage, { signer: tokenDeployerSigner });
-
-    token = await bank.tokenMetadata(tokenId);
-  }
-
-  return { id: tokenId, ...token };
+  await rollup.call(transferMessage, {
+    signer: tokenDeployerSigner,
+  });
 };
