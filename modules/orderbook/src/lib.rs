@@ -125,7 +125,7 @@ impl<S: Spec> Module for OrderbookModule<S> {
     fn call(
         &mut self,
         msg: Self::CallMessage,
-        context: &Context<S>,
+        ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), Self::Error> {
         match msg {
@@ -137,7 +137,7 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 quantity,
                 order_type,
             } => self.place_order_normal(
-                market_id, outcome, side, price, quantity, order_type, context, state,
+                market_id, outcome, side, price, quantity, order_type, ctx, state,
             ),
 
             CallMessage::PlaceOrderStealth {
@@ -164,14 +164,14 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 price,
                 quantity,
                 order_type,
-                context,
+                ctx,
                 state,
             ),
 
-            CallMessage::CancelOrder { order_id } => self.cancel_order(order_id, context, state),
+            CallMessage::CancelOrder { order_id } => self.cancel_order(order_id, ctx, state),
 
             CallMessage::CancelAllOrders { market_id, outcome } => {
-                self.cancel_all_orders(market_id, outcome, context, state)
+                self.cancel_all_orders(market_id, outcome, ctx, state)
             }
         }
     }
