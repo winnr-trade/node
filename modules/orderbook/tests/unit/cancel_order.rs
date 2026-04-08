@@ -35,14 +35,14 @@ fn test_cancel_open_order() {
 fn test_cancel_partially_filled_order() {
     let (data, mut runner) = setup();
 
-    // Ask 200
+    // BUY NO @ 5000 → canonical Ask @ 5000, qty 200
     let ask_id = utils::get_next_order_id(&runner);
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         200,
         OrderType::Limit,
@@ -154,13 +154,13 @@ fn test_cancel_bid_unlocks_collateral() {
 fn test_cancel_partially_filled_bid_unlocks_remaining_collateral() {
     let (data, mut runner) = setup();
 
-    // Ask 40 @ 5000
+    // BUY NO @ 5000 → canonical Ask @ 5000, qty 40, locks 5000*40/10000 = 20
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         40,
         OrderType::Limit,
@@ -179,17 +179,16 @@ fn test_cancel_partially_filled_bid_unlocks_remaining_collateral() {
         OrderType::Limit,
     );
 
-    // Locked = Price(5000).cost(100) = 50 initially locked
-    // After matching, remaining_quantity=60. Cancel should unlock cost of 60 shares.
-    // Price(5000).cost(60) = 30
+    // Initially locked 50 (5000*100/10000). execute_fill released 20 (5000*40/10000).
+    // Remaining locked = 30 for the 60 unfilled units.
     let locked_before = utils::get_locked_collateral(&runner, &data.user2, data.market_id);
-    assert_eq!(locked_before, 50); // full amount still locked
+    assert_eq!(locked_before, 30);
 
     utils::cancel_order(&mut runner, &data.user2, OrderId(bid_id));
 
-    // After cancel: locked was 50, unlock 30 (cost of remaining 60 shares) => 20
+    // Cancel unlocks remaining: 5000*60/10000 = 30 => locked = 0
     let locked_after = utils::get_locked_collateral(&runner, &data.user2, data.market_id);
-    assert_eq!(locked_after, 20);
+    assert_eq!(locked_after, 0);
 }
 
 #[test]
@@ -209,17 +208,15 @@ fn test_cancel_removes_from_book() {
     );
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(5000))
     );
 
     utils::cancel_order(&mut runner, &data.user1, OrderId(order_id));
 
     // Book should be empty
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
-    assert!(
-        utils::get_bids_at_price(&runner, data.market_id, OutcomeSide::Yes, Price(5000)).is_empty()
-    );
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
+    assert!(utils::get_bids_at_price(&runner, data.market_id, Price(5000)).is_empty());
 }
 
 #[test]
@@ -276,7 +273,7 @@ fn test_cancel_updates_best_price_to_next_level() {
     );
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(5000))
     );
 
@@ -284,7 +281,7 @@ fn test_cancel_updates_best_price_to_next_level() {
     utils::cancel_order(&mut runner, &data.user1, OrderId(bid1_id));
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(4000))
     );
 }

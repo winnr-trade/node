@@ -24,7 +24,7 @@ fn test_post_only_posts_when_no_opposing_orders() {
     assert_eq!(order.status, OrderStatus::Open);
     assert_eq!(order.remaining_quantity, 100);
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(5000))
     );
 }
@@ -38,8 +38,8 @@ fn test_post_only_rejected_when_would_match() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         100,
         OrderType::Limit,
@@ -60,7 +60,7 @@ fn test_post_only_rejected_when_would_match() {
 
     // Ask should still be on book, unchanged
     assert_eq!(
-        utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(5000))
     );
 }
@@ -74,9 +74,9 @@ fn test_post_only_bid_below_best_ask_posts() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
@@ -107,8 +107,8 @@ fn test_ioc_fills_partial_and_remainder_not_posted() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         50,
         OrderType::Limit,
@@ -135,7 +135,7 @@ fn test_ioc_fills_partial_and_remainder_not_posted() {
     );
 
     // No bids should be on the book
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_ioc_no_match_nothing_posted() {
     // Order should not be on book
     let order = utils::try_get_order(&runner, OrderId(ioc_id));
     assert!(order.is_none(), "IOC with no match should not post");
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
 }
 
 #[test]
@@ -171,8 +171,8 @@ fn test_fok_fills_fully() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         100,
         OrderType::Limit,
@@ -201,12 +201,13 @@ fn test_fok_rejected_when_insufficient_liquidity() {
     let (data, mut runner) = setup();
 
     // Only 50 available
+    let ask_id = utils::get_next_order_id(&runner);
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         50,
         OrderType::Limit,
@@ -229,8 +230,11 @@ fn test_fok_rejected_when_insufficient_liquidity() {
     );
 
     // The maker ask should be unchanged (FOK is atomic)
+    let ask_order = utils::get_order(&runner, OrderId(ask_id));
+    assert_eq!(ask_order.status, OrderStatus::Open);
+    assert_eq!(ask_order.remaining_quantity, 50);
     assert_eq!(
-        utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(5000))
     );
 }
@@ -266,8 +270,8 @@ fn test_market_order_fills_and_does_not_post() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         100,
         OrderType::Limit,
@@ -307,8 +311,8 @@ fn test_market_order_partial_fill_not_posted() {
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
+        OutcomeSide::No,
+        Side::Bid,
         Price(5000),
         30,
         OrderType::Limit,
@@ -328,6 +332,6 @@ fn test_market_order_partial_fill_not_posted() {
     );
 
     // No bid on book
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
     assert!(utils::try_get_order(&runner, OrderId(market_order_id)).is_none());
 }

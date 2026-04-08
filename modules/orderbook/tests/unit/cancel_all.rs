@@ -20,13 +20,14 @@ fn test_cancel_all_for_market() {
     );
 
     let id2 = utils::get_next_order_id(&runner);
+    // BUY NO @ 4000 → canonical Ask @ 6000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
@@ -57,9 +58,8 @@ fn test_cancel_all_for_market() {
     assert_eq!(o3.status, OrderStatus::Cancelled);
 
     // Book should be empty
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
-    assert!(utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes).is_none());
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::No).is_none());
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
+    assert!(utils::get_best_ask(&runner, data.market_id).is_none());
 }
 
 #[test]
@@ -133,15 +133,15 @@ fn test_cancel_all_does_not_affect_other_users() {
         OrderType::Limit,
     );
 
-    // user2 places order
+    // user2 places BUY NO @ 4000 → canonical Ask @ 6000
     let u2_id = utils::get_next_order_id(&runner);
     utils::place_order(
         &mut runner,
         &data.user2,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );

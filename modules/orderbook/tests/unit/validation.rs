@@ -63,7 +63,7 @@ fn test_invalid_price_above_10000_rejected() {
         &data.user1,
         data.market_id,
         OutcomeSide::Yes,
-        Side::Ask,
+        Side::Bid,
         Price(15000),
         100,
         OrderType::Limit,
@@ -87,7 +87,7 @@ fn test_valid_edge_price_1_accepted() {
     );
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(1))
     );
 }
@@ -96,19 +96,20 @@ fn test_valid_edge_price_1_accepted() {
 fn test_valid_edge_price_9999_accepted() {
     let (data, mut runner) = setup();
 
+    // BUY NO @ 1 → canonical Ask @ 9999
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(9999),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(1),
         100,
         OrderType::Limit,
     );
 
     assert_eq!(
-        utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(9999))
     );
 }

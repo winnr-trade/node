@@ -42,4 +42,5 @@ native = [
     "sov-bank/native",
     "sov-chain-state/native",
     "market/native",
+    "shielded-pool/native",
 ]

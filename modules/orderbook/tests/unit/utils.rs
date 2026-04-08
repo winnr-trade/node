@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::{RT, S};
 use market::MarketModule;
 use orderbook::{
-    BookKey, BookSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey, UserMarketKey,
+    MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey, UserMarketKey,
 };
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
 use sov_bank::TokenId;
@@ -24,7 +24,6 @@ fn error_code_of(err: &OrderbookError) -> String {
 }
 
 /// Extract the `error_code` string from a reverted transaction receipt.
-/// Panics if the receipt is not `Reverted` or the error_code field is missing.
 fn extract_error_code(tx_receipt: &sov_modules_api::TxEffect<S>) -> String {
     match tx_receipt {
         TxEffect::Reverted(reverted) => {
@@ -44,10 +43,9 @@ fn extract_error_code(tx_receipt: &sov_modules_api::TxEffect<S>) -> String {
 }
 
 // ============================================================================
-// Market helpers (needed to create markets for orderbook testing)
+// Market helpers
 // ============================================================================
 
-/// Get the current chain time in milliseconds.
 pub fn get_time_ms(runner: &TestRunner<RT, S>) -> u64 {
     runner.query_state(|state| {
         runner
@@ -59,14 +57,35 @@ pub fn get_time_ms(runner: &TestRunner<RT, S>) -> u64 {
     })
 }
 
-/// Create a prediction market and return its MarketId.
+pub fn set_supported_collateral_token(
+    runner: &mut TestRunner<RT, S>,
+    admin: &TestUser<S>,
+    token_id: TokenId,
+) {
+    let msg = market::CallMessage::<S>::SetSupportedCollateralToken {
+        token_id,
+        support: true,
+    };
+
+    runner.execute_transaction(TransactionTestCase {
+        input: admin.create_plain_message::<RT, MarketModule<S>>(msg),
+        assert: Box::new(|result, _state| {
+            assert!(
+                result.tx_receipt.is_successful(),
+                "set_supported_collateral_token failed: {:?}",
+                result.tx_receipt
+            );
+        }),
+    });
+}
+
 pub fn create_test_market(
     runner: &mut TestRunner<RT, S>,
     creator: &TestUser<S>,
     resolver: &TestUser<S>,
     collateral_token: TokenId,
 ) -> MarketId {
-    let resolution_time = get_time_ms(runner) + 1_000_000; // far in the future
+    let resolution_time = get_time_ms(runner) + 1_000_000;
 
     let expected_id = runner.query_state(|state| {
         runner
@@ -99,7 +118,6 @@ pub fn create_test_market(
     MarketId(expected_id)
 }
 
-/// Halt a market (admin only).
 pub fn halt_market(runner: &mut TestRunner<RT, S>, admin: &TestUser<S>, market_id: MarketId) {
     let msg = market::CallMessage::<S>::HaltMarket { market_id };
 
@@ -119,7 +137,6 @@ pub fn halt_market(runner: &mut TestRunner<RT, S>, admin: &TestUser<S>, market_i
 // Orderbook transaction helpers
 // ============================================================================
 
-/// Place an order and assert success.
 pub fn place_order(
     runner: &mut TestRunner<RT, S>,
     user: &TestUser<S>,
@@ -151,7 +168,6 @@ pub fn place_order(
     });
 }
 
-/// Place an order and assert failure with the expected `OrderbookError` variant.
 pub fn place_order_should_fail(
     runner: &mut TestRunner<RT, S>,
     user: &TestUser<S>,
@@ -190,7 +206,6 @@ pub fn place_order_should_fail(
     });
 }
 
-/// Cancel an order and assert success.
 pub fn cancel_order(runner: &mut TestRunner<RT, S>, user: &TestUser<S>, order_id: OrderId) {
     let msg = orderbook::CallMessage::CancelOrder { order_id };
 
@@ -206,7 +221,6 @@ pub fn cancel_order(runner: &mut TestRunner<RT, S>, user: &TestUser<S>, order_id
     });
 }
 
-/// Cancel an order and assert failure with the expected `OrderbookError` variant.
 pub fn cancel_order_should_fail(
     runner: &mut TestRunner<RT, S>,
     user: &TestUser<S>,
@@ -233,7 +247,6 @@ pub fn cancel_order_should_fail(
     });
 }
 
-/// Cancel all orders and assert success.
 pub fn cancel_all_orders(
     runner: &mut TestRunner<RT, S>,
     user: &TestUser<S>,
@@ -258,7 +271,6 @@ pub fn cancel_all_orders(
 // State query helpers
 // ============================================================================
 
-/// Get an order from state by ID. Panics if not found.
 pub fn get_order(runner: &TestRunner<RT, S>, order_id: OrderId) -> Order<S> {
     runner.query_state(|state| {
         runner
@@ -271,7 +283,6 @@ pub fn get_order(runner: &TestRunner<RT, S>, order_id: OrderId) -> Order<S> {
     })
 }
 
-/// Get an order from state by ID. Returns None if not found.
 pub fn try_get_order(runner: &TestRunner<RT, S>, order_id: OrderId) -> Option<Order<S>> {
     runner.query_state(|state| {
         runner
@@ -283,7 +294,6 @@ pub fn try_get_order(runner: &TestRunner<RT, S>, order_id: OrderId) -> Option<Or
     })
 }
 
-/// Get the next order ID that will be assigned.
 pub fn get_next_order_id(runner: &TestRunner<RT, S>) -> u64 {
     runner.query_state(|state| {
         runner
@@ -296,52 +306,33 @@ pub fn get_next_order_id(runner: &TestRunner<RT, S>) -> u64 {
     })
 }
 
-/// Get the best bid for a market/outcome.
-pub fn get_best_bid(
-    runner: &TestRunner<RT, S>,
-    market_id: MarketId,
-    outcome: OutcomeSide,
-) -> Option<Price> {
-    let key = BookKey { market_id, outcome };
+/// Get the best canonical bid for a market.
+pub fn get_best_bid(runner: &TestRunner<RT, S>, market_id: MarketId) -> Option<Price> {
     runner.query_state(|state| {
         runner
             .runtime()
             .orderbook
             .best_bid
-            .get(&key, state)
+            .get(&market_id, state)
             .expect("failed to read best_bid")
     })
 }
 
-/// Get the best ask for a market/outcome.
-pub fn get_best_ask(
-    runner: &TestRunner<RT, S>,
-    market_id: MarketId,
-    outcome: OutcomeSide,
-) -> Option<Price> {
-    let key = BookKey { market_id, outcome };
+/// Get the best canonical ask for a market.
+pub fn get_best_ask(runner: &TestRunner<RT, S>, market_id: MarketId) -> Option<Price> {
     runner.query_state(|state| {
         runner
             .runtime()
             .orderbook
             .best_ask
-            .get(&key, state)
+            .get(&market_id, state)
             .expect("failed to read best_ask")
     })
 }
 
-/// Get the price levels for a book side.
-pub fn get_price_levels(
-    runner: &TestRunner<RT, S>,
-    market_id: MarketId,
-    outcome: OutcomeSide,
-    side: Side,
-) -> Vec<Price> {
-    let key = BookSideKey {
-        market_id,
-        outcome,
-        side,
-    };
+/// Get canonical price levels for a market side.
+pub fn get_price_levels(runner: &TestRunner<RT, S>, market_id: MarketId, side: Side) -> Vec<Price> {
+    let key = MarketSideKey { market_id, side };
     runner.query_state(|state| {
         runner
             .runtime()
@@ -353,18 +344,12 @@ pub fn get_price_levels(
     })
 }
 
-/// Get the order IDs at a specific price level (bids side).
 pub fn get_bids_at_price(
     runner: &TestRunner<RT, S>,
     market_id: MarketId,
-    outcome: OutcomeSide,
     price: Price,
 ) -> Vec<OrderId> {
-    let key = PriceLevelKey {
-        market_id,
-        outcome,
-        price,
-    };
+    let key = PriceLevelKey { market_id, price };
     runner.query_state(|state| {
         runner
             .runtime()
@@ -376,18 +361,12 @@ pub fn get_bids_at_price(
     })
 }
 
-/// Get the order IDs at a specific price level (asks side).
 pub fn get_asks_at_price(
     runner: &TestRunner<RT, S>,
     market_id: MarketId,
-    outcome: OutcomeSide,
     price: Price,
 ) -> Vec<OrderId> {
-    let key = PriceLevelKey {
-        market_id,
-        outcome,
-        price,
-    };
+    let key = PriceLevelKey { market_id, price };
     runner.query_state(|state| {
         runner
             .runtime()
@@ -399,7 +378,6 @@ pub fn get_asks_at_price(
     })
 }
 
-/// Get a user's open order IDs.
 pub fn get_user_orders(runner: &TestRunner<RT, S>, user: &TestUser<S>) -> Vec<OrderId> {
     runner.query_state(|state| {
         runner
@@ -412,7 +390,6 @@ pub fn get_user_orders(runner: &TestRunner<RT, S>, user: &TestUser<S>) -> Vec<Or
     })
 }
 
-/// Get locked collateral for a user in a market.
 pub fn get_locked_collateral(
     runner: &TestRunner<RT, S>,
     user: &TestUser<S>,
@@ -429,6 +406,42 @@ pub fn get_locked_collateral(
             .locked_collateral
             .get(&key, state)
             .expect("failed to read locked_collateral")
+            .unwrap_or(0)
+    })
+}
+
+/// Get user's YES shares in a market.
+pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
+    let key = market::PositionKey::<S> {
+        market_id,
+        address: user.address(),
+    };
+    runner.query_state(|state| {
+        runner
+            .runtime()
+            .market
+            .positions
+            .get(&key, state)
+            .expect("failed to read position")
+            .map(|p| p.yes_shares)
+            .unwrap_or(0)
+    })
+}
+
+/// Get user's NO shares in a market.
+pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
+    let key = market::PositionKey::<S> {
+        market_id,
+        address: user.address(),
+    };
+    runner.query_state(|state| {
+        runner
+            .runtime()
+            .market
+            .positions
+            .get(&key, state)
+            .expect("failed to read position")
+            .map(|p| p.no_shares)
             .unwrap_or(0)
     })
 }

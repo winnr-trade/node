@@ -24,7 +24,9 @@ fn test_place_limit_bid_order() {
     assert_eq!(order.market_id, data.market_id);
     assert_eq!(order.outcome, OutcomeSide::Yes);
     assert_eq!(order.side, Side::Bid);
-    assert_eq!(order.price, Price(5000));
+    // YES Bid => canonical Bid @ same price
+    assert_eq!(order.canonical_side, Side::Bid);
+    assert_eq!(order.canonical_price, Price(5000));
     assert_eq!(order.original_quantity, 100);
     assert_eq!(order.remaining_quantity, 100);
     assert_eq!(order.owner, data.user1.address());
@@ -37,21 +39,24 @@ fn test_place_limit_ask_order() {
     let (data, mut runner) = setup();
 
     let next_id = utils::get_next_order_id(&runner);
+    // BUY NO @ 6000 → canonical Ask @ 4000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
         OutcomeSide::No,
-        Side::Ask,
+        Side::Bid,
         Price(6000),
         50,
         OrderType::Limit,
     );
 
     let order = utils::get_order(&runner, OrderId(next_id));
-    assert_eq!(order.side, Side::Ask);
+    assert_eq!(order.side, Side::Bid);
     assert_eq!(order.outcome, OutcomeSide::No);
-    assert_eq!(order.price, Price(6000));
+    // BUY NO @ 6000 => canonical SELL YES @ (10000-6000) = canonical Ask @ 4000
+    assert_eq!(order.canonical_side, Side::Ask);
+    assert_eq!(order.canonical_price, Price(4000));
     assert_eq!(order.original_quantity, 50);
     assert_eq!(order.remaining_quantity, 50);
     assert_eq!(order.status, OrderStatus::Open);
@@ -62,7 +67,7 @@ fn test_place_bid_updates_best_bid() {
     let (data, mut runner) = setup();
 
     // Initially no best bid
-    assert!(utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes).is_none());
+    assert!(utils::get_best_bid(&runner, data.market_id).is_none());
 
     utils::place_order(
         &mut runner,
@@ -76,7 +81,7 @@ fn test_place_bid_updates_best_bid() {
     );
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(4000))
     );
 
@@ -93,7 +98,7 @@ fn test_place_bid_updates_best_bid() {
     );
 
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_bid(&runner, data.market_id),
         Some(Price(5000))
     );
 }
@@ -102,38 +107,39 @@ fn test_place_bid_updates_best_bid() {
 fn test_place_ask_updates_best_ask() {
     let (data, mut runner) = setup();
 
-    assert!(utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes).is_none());
+    assert!(utils::get_best_ask(&runner, data.market_id).is_none());
 
+    // BUY NO @ 3000 → canonical Ask @ 7000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(7000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(3000),
         100,
         OrderType::Limit,
     );
 
     assert_eq!(
-        utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(7000))
     );
 
-    // Place a lower ask — best_ask should improve
+    // BUY NO @ 4000 → canonical Ask @ 6000 (better ask)
     utils::place_order(
         &mut runner,
         &data.user2,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
 
     assert_eq!(
-        utils::get_best_ask(&runner, data.market_id, OutcomeSide::Yes),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(6000))
     );
 }
@@ -183,23 +189,24 @@ fn test_place_bid_locks_collateral() {
 }
 
 #[test]
-fn test_place_ask_does_not_lock_collateral() {
+fn test_place_ask_locks_collateral() {
     let (data, mut runner) = setup();
 
+    // BUY NO @ 4000 → canonical Ask @ 6000, locks 4000 * 100 / 10000 = 40
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
 
     assert_eq!(
         utils::get_locked_collateral(&runner, &data.user1, data.market_id),
-        0
+        40
     );
 }
 
@@ -240,7 +247,7 @@ fn test_place_orders_at_multiple_price_levels() {
     );
 
     // Price levels should be sorted descending for bids
-    let levels = utils::get_price_levels(&runner, data.market_id, OutcomeSide::Yes, Side::Bid);
+    let levels = utils::get_price_levels(&runner, data.market_id, Side::Bid);
     assert_eq!(levels, vec![Price(5000), Price(4000), Price(3000)]);
 }
 
@@ -267,9 +274,9 @@ fn test_order_id_increments_sequentially() {
         &mut runner,
         &data.user2,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
@@ -299,12 +306,13 @@ fn test_place_order_adds_to_user_orders() {
     assert_eq!(user_orders, vec![OrderId(id1)]);
 
     let id2 = utils::get_next_order_id(&runner);
+    // BUY NO @ 7000 → canonical Ask @ 3000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
         OutcomeSide::No,
-        Side::Ask,
+        Side::Bid,
         Price(7000),
         50,
         OrderType::Limit,
@@ -330,7 +338,7 @@ fn test_place_order_adds_to_bid_price_level() {
         OrderType::Limit,
     );
 
-    let bids = utils::get_bids_at_price(&runner, data.market_id, OutcomeSide::Yes, Price(5000));
+    let bids = utils::get_bids_at_price(&runner, data.market_id, Price(5000));
     assert_eq!(bids, vec![OrderId(id)]);
 }
 
@@ -339,54 +347,57 @@ fn test_place_order_adds_to_ask_price_level() {
     let (data, mut runner) = setup();
 
     let id = utils::get_next_order_id(&runner);
+    // BUY NO @ 4000 → canonical Ask @ 6000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
-        OutcomeSide::Yes,
-        Side::Ask,
-        Price(6000),
+        OutcomeSide::No,
+        Side::Bid,
+        Price(4000),
         100,
         OrderType::Limit,
     );
 
-    let asks = utils::get_asks_at_price(&runner, data.market_id, OutcomeSide::Yes, Price(6000));
+    let asks = utils::get_asks_at_price(&runner, data.market_id, Price(6000));
     assert_eq!(asks, vec![OrderId(id)]);
 }
 
 #[test]
-fn test_yes_and_no_books_are_independent() {
+fn test_yes_and_no_orders_share_canonical_book() {
     let (data, mut runner) = setup();
 
+    // BUY YES @ 3000 → canonical bid @ 3000
     utils::place_order(
         &mut runner,
         &data.user1,
         data.market_id,
         OutcomeSide::Yes,
         Side::Bid,
-        Price(5000),
+        Price(3000),
         100,
         OrderType::Limit,
     );
 
+    // BUY NO @ 3000 → canonical SELL YES @ (10000-3000) = canonical ask @ 7000
     utils::place_order(
         &mut runner,
         &data.user2,
         data.market_id,
         OutcomeSide::No,
         Side::Bid,
-        Price(7000),
+        Price(3000),
         100,
         OrderType::Limit,
     );
 
-    // Each outcome has its own best bid
+    // Single canonical book: best bid = 3000, best ask = 7000 (no crossing)
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::Yes),
-        Some(Price(5000))
+        utils::get_best_bid(&runner, data.market_id),
+        Some(Price(3000))
     );
     assert_eq!(
-        utils::get_best_bid(&runner, data.market_id, OutcomeSide::No),
+        utils::get_best_ask(&runner, data.market_id),
         Some(Price(7000))
     );
 }

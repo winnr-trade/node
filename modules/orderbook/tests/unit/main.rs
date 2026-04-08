@@ -1,6 +1,7 @@
 use market::{MarketConfig, MarketGenesisConfig, MarketModule};
 use orderbook::{FeeConfig, OrderbookGenesisConfig, OrderbookModule};
 use shared_types::MarketId;
+use shielded_pool::{ShieldedPoolGenesisConfig, ShieldedPoolModule};
 use sov_bank::TokenId;
 use sov_modules_api::{Amount, Spec};
 use sov_test_utils::runtime::genesis::optimistic::HighLevelOptimisticGenesisConfig;
@@ -19,7 +20,8 @@ mod validation;
 generate_optimistic_runtime!(
     TestRuntime <=
     market: MarketModule<S>,
-    orderbook: OrderbookModule<S>
+    orderbook: OrderbookModule<S>,
+    shielded_pool: ShieldedPoolModule<S>
 );
 
 type S = TestSpec;
@@ -70,10 +72,14 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
         },
     };
 
+    // Shielded pool genesis
+    let shielded_pool_config = ShieldedPoolGenesisConfig { admin: admin_addr };
+
     let genesis = GenesisConfig::from_minimal_config(
         genesis_config.into(),
         market_genesis_config,
         orderbook_config,
+        shielded_pool_config,
     );
 
     let mut runner =
@@ -81,6 +87,9 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
 
     // Advance one slot so chain time is initialized
     runner.advance_slots(1);
+
+    // Whitelist the collateral token before creating markets
+    utils::set_supported_collateral_token(&mut runner, &admin, collateral_token_id);
 
     // Create a prediction market for orderbook tests
     let market_id = utils::create_test_market(&mut runner, &admin, &admin, collateral_token_id);

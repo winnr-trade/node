@@ -1,30 +1,25 @@
 //! Key types for StateMap storage in the orderbook module.
 //!
-//! These wrapper types implement Display and FromStr as required by StateMap.
+//! All keys are in canonical YES-space. There is one unified order book per market.
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
-use shared_types::{MarketId, OutcomeSide, Price, Side};
+use shared_types::{MarketId, Price, Side};
 use sov_modules_api::Spec;
 use std::str::FromStr;
 
-/// Key for price level in the order book: (MarketId, OutcomeSide, Price)
+/// Key for a price level in the canonical book: (MarketId, Price).
 #[derive(
     Clone, Debug, PartialEq, Eq, Hash, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]
 pub struct PriceLevelKey {
     pub market_id: MarketId,
-    pub outcome: OutcomeSide,
     pub price: Price,
 }
 
 impl core::fmt::Display for PriceLevelKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let outcome = match self.outcome {
-            OutcomeSide::Yes => "Y",
-            OutcomeSide::No => "N",
-        };
-        write!(f, "{}:{}:{}", self.market_id.0, outcome, self.price.0)
+        write!(f, "{}:{}", self.market_id.0, self.price.0)
     }
 }
 
@@ -33,113 +28,53 @@ impl FromStr for PriceLevelKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(':').collect();
-        if parts.len() != 3 {
+        if parts.len() != 2 {
             anyhow::bail!("Invalid PriceLevelKey format");
         }
         let market_id = MarketId(u64::from_str(parts[0])?);
-        let outcome = match parts[1] {
-            "Y" => OutcomeSide::Yes,
-            "N" => OutcomeSide::No,
-            _ => anyhow::bail!("Invalid outcome side"),
-        };
-        let price = Price(u64::from_str(parts[2])?);
-        Ok(PriceLevelKey {
-            market_id,
-            outcome,
-            price,
-        })
+        let price = Price(u64::from_str(parts[1])?);
+        Ok(PriceLevelKey { market_id, price })
     }
 }
 
-/// Key for order book: (MarketId, OutcomeSide)
+/// Key for book-level lookups per market side: (MarketId, Side).
 #[derive(
     Clone, Debug, PartialEq, Eq, Hash, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]
-pub struct BookKey {
+pub struct MarketSideKey {
     pub market_id: MarketId,
-    pub outcome: OutcomeSide,
+    pub side: Side,
 }
 
-impl core::fmt::Display for BookKey {
+impl core::fmt::Display for MarketSideKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let outcome = match self.outcome {
-            OutcomeSide::Yes => "Y",
-            OutcomeSide::No => "N",
+        let side = match self.side {
+            Side::Bid => "B",
+            Side::Ask => "A",
         };
-        write!(f, "{}:{}", self.market_id.0, outcome)
+        write!(f, "{}:{}", self.market_id.0, side)
     }
 }
 
-impl FromStr for BookKey {
+impl FromStr for MarketSideKey {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split(':').collect();
         if parts.len() != 2 {
-            anyhow::bail!("Invalid BookKey format");
+            anyhow::bail!("Invalid MarketSideKey format");
         }
         let market_id = MarketId(u64::from_str(parts[0])?);
-        let outcome = match parts[1] {
-            "Y" => OutcomeSide::Yes,
-            "N" => OutcomeSide::No,
-            _ => anyhow::bail!("Invalid outcome side"),
-        };
-        Ok(BookKey { market_id, outcome })
-    }
-}
-
-/// Key for order book side: (MarketId, OutcomeSide, Side)
-#[derive(
-    Clone, Debug, PartialEq, Eq, Hash, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
-)]
-pub struct BookSideKey {
-    pub market_id: MarketId,
-    pub outcome: OutcomeSide,
-    pub side: Side,
-}
-
-impl core::fmt::Display for BookSideKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let outcome = match self.outcome {
-            OutcomeSide::Yes => "Y",
-            OutcomeSide::No => "N",
-        };
-        let side = match self.side {
-            Side::Bid => "B",
-            Side::Ask => "A",
-        };
-        write!(f, "{}:{}:{}", self.market_id.0, outcome, side)
-    }
-}
-
-impl FromStr for BookSideKey {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split(':').collect();
-        if parts.len() != 3 {
-            anyhow::bail!("Invalid BookSideKey format");
-        }
-        let market_id = MarketId(u64::from_str(parts[0])?);
-        let outcome = match parts[1] {
-            "Y" => OutcomeSide::Yes,
-            "N" => OutcomeSide::No,
-            _ => anyhow::bail!("Invalid outcome side"),
-        };
-        let side = match parts[2] {
+        let side = match parts[1] {
             "B" => Side::Bid,
             "A" => Side::Ask,
             _ => anyhow::bail!("Invalid side"),
         };
-        Ok(BookSideKey {
-            market_id,
-            outcome,
-            side,
-        })
+        Ok(MarketSideKey { market_id, side })
     }
 }
 
-/// Key for user position per market: (Address, MarketId)
+/// Key for user state per market: (Address, MarketId).
 #[derive(
     Clone, Debug, PartialEq, Eq, Hash, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]

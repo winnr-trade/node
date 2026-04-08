@@ -5,8 +5,10 @@ use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
 use sov_bank::TokenId;
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
-    HexHash, Spec,
+    HexHash, SafeVec, Spec,
 };
+
+use crate::OrderRequest;
 
 /// Call messages for the orderbook module.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, UniversalWallet)]
@@ -33,7 +35,7 @@ pub enum CallMessage<S: Spec> {
     /// Place a new order.
     PlaceOrderStealth {
         /// Zero-knowledge proof of ownership of the stealth address and validity of the withdrawal.
-        proof: Vec<u8>,
+        proof: SafeVec<u8>,
         /// Commitment corresponding to the proof.
         commitment: HexHash,
         /// Nullifier to prevent double-spending.
@@ -69,4 +71,45 @@ pub enum CallMessage<S: Spec> {
         /// Optionally filter by outcome.
         outcome: Option<OutcomeSide>,
     },
+}
+
+impl<S: Spec> CallMessage<S> {
+    pub(crate) fn to_order_request(&self) -> OrderRequest {
+        match self {
+            CallMessage::PlaceOrderNormal {
+                market_id,
+                outcome,
+                side,
+                price,
+                quantity,
+                order_type,
+            } => OrderRequest {
+                market_id: *market_id,
+                outcome: *outcome,
+                side: *side,
+                price: *price,
+                quantity: *quantity,
+                order_type: *order_type,
+            },
+
+            CallMessage::PlaceOrderStealth {
+                market_id,
+                outcome,
+                side,
+                price,
+                quantity,
+                order_type,
+                ..
+            } => OrderRequest {
+                market_id: *market_id,
+                outcome: *outcome,
+                side: *side,
+                price: *price,
+                quantity: *quantity,
+                order_type: *order_type,
+            },
+
+            _ => panic!("Not an order placement message"),
+        }
+    }
 }

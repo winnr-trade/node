@@ -1,10 +1,15 @@
 //! Orderbook Module
 //!
-//! Implements a Central Limit Order Book (CLOB) for trading prediction market shares.
-//! Features:
-//! - Price-time priority matching
-//! - Multiple order types (Limit, Market, PostOnly, IOC, FOK)
-//! - Separate order books for YES and NO outcomes
+//! Unified canonical YES-space order book for binary prediction markets.
+//! All orders are normalized to YES representation before entering the book:
+//! - BUY NO @ p  → SELL YES @ (1-p)
+//! - SELL NO @ p → BUY YES @ (1-p)
+//!
+//! Settlement uses four paths based on the original intents of both counterparties:
+//! - MintPair: BUY YES vs BUY NO — mint new YES+NO pair from collateral.
+//! - TransferYes: BUY YES vs SELL YES — transfer existing YES shares.
+//! - TransferNo: BUY NO vs SELL NO — transfer existing NO shares.
+//! - MergePair: SELL YES vs SELL NO — burn YES+NO pair, release backing collateral.
 
 mod call;
 mod error;
@@ -36,7 +41,7 @@ use sov_modules_api::{
     TxState,
 };
 
-/// Orderbook Module for Prediction Market Trading
+/// Orderbook Module — unified canonical YES-space CLOB.
 #[derive(Clone, ModuleInfo, ModuleRestApi)]
 pub struct OrderbookModule<S: Spec> {
     /// Module identifier
@@ -51,7 +56,7 @@ pub struct OrderbookModule<S: Spec> {
     #[state]
     pub next_order_id: StateValue<u64>,
 
-    /// All orders by ID
+    /// All orders by ID (stored in canonical form)
     #[state]
     pub orders: StateMap<OrderId, Order<S>>,
 
@@ -59,32 +64,36 @@ pub struct OrderbookModule<S: Spec> {
     #[state]
     pub user_orders: StateMap<S::Address, Vec<OrderId>>,
 
-    /// Locked collateral per user per market
+    /// Locked collateral per user per market (for BUY orders)
     #[state]
     pub locked_collateral: StateMap<UserMarketKey<S>, u64>,
 
+    /// Locked YES/NO shares per user per market (for SELL orders)
+    #[state]
+    pub locked_shares: StateMap<UserMarketKey<S>, LockedShares>,
+
     // ========================================================================
-    // ORDER BOOK STRUCTURE
+    // UNIFIED CANONICAL ORDER BOOK (YES-space)
     // ========================================================================
-    /// Bids at each price level
+    /// Canonical YES bids at each price level
     #[state]
     pub bids: StateMap<PriceLevelKey, Vec<OrderId>>,
 
-    /// Asks at each price level
+    /// Canonical YES asks at each price level
     #[state]
     pub asks: StateMap<PriceLevelKey, Vec<OrderId>>,
 
-    /// Best bid per book
+    /// Best canonical bid per market
     #[state]
-    pub best_bid: StateMap<BookKey, Price>,
+    pub best_bid: StateMap<MarketId, Price>,
 
-    /// Best ask per book
+    /// Best canonical ask per market
     #[state]
-    pub best_ask: StateMap<BookKey, Price>,
+    pub best_ask: StateMap<MarketId, Price>,
 
-    /// Active price levels per side
+    /// Active price levels per market side (sorted)
     #[state]
-    pub price_levels: StateMap<BookSideKey, Vec<Price>>,
+    pub price_levels: StateMap<MarketSideKey, Vec<Price>>,
 
     // ========================================================================
     // MODULE DEPENDENCIES
@@ -97,7 +106,7 @@ pub struct OrderbookModule<S: Spec> {
     #[module]
     pub chain_state: sov_chain_state::ChainState<S>,
 
-    /// Market module for position tracking
+    /// Market module for position tracking & synthetic minting
     #[module]
     pub market: MarketModule<S>,
 
@@ -129,41 +138,24 @@ impl<S: Spec> Module for OrderbookModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), Self::Error> {
         match msg {
-            CallMessage::PlaceOrderNormal {
-                market_id,
-                outcome,
-                side,
-                price,
-                quantity,
-                order_type,
-            } => self.place_order_normal(
-                market_id, outcome, side, price, quantity, order_type, ctx, state,
-            ),
+            CallMessage::PlaceOrderNormal { .. } => {
+                self.place_order_normal(msg.to_order_request(), ctx, state)
+            }
 
             CallMessage::PlaceOrderStealth {
                 proof,
                 commitment,
                 nullifier,
                 stealth_address,
-                market_id,
                 token_id,
-                outcome,
-                side,
-                price,
-                quantity,
-                order_type,
+                ..
             } => self.place_order_stealth(
+                msg.to_order_request(),
                 proof,
                 commitment,
                 nullifier,
                 &stealth_address,
-                market_id,
                 token_id,
-                outcome,
-                side,
-                price,
-                quantity,
-                order_type,
                 ctx,
                 state,
             ),
