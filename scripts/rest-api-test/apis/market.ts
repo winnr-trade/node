@@ -7,6 +7,7 @@ import {
   userSigner,
 } from "../config";
 import testMarketData from "../../../test-data/market/data.json";
+import type { Signer } from "@sovereign-sdk/signers";
 
 export const setSupportedCollateralToken = async (params: {
   tokenId: string;
@@ -68,7 +69,11 @@ export const createMarkets = async (collateralTokenId: string) => {
   }
 };
 
-export const mintShares = async (marketId: number, amount: number) => {
+export const mintShares = async (
+  marketId: number,
+  amount: number,
+  signer: Signer,
+) => {
   const callMessage = {
     market: {
       mint_shares: {
@@ -78,5 +83,5 @@ export const mintShares = async (marketId: number, amount: number) => {
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: userSigner });
+  const res = await rollup.call(callMessage, { signer });
 };

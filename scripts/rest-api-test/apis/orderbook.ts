@@ -1,18 +1,22 @@
+import type { Signer } from "@sovereign-sdk/signers";
 import { rollup, userSigner } from "../config";
 
-export const placeOrder = async (params: {
-  marketId: number;
-  outcome: "yes" | "no";
-  price: number;
-  quantity: number;
-  side: "bid" | "ask";
-  orderType:
-    | "limit"
-    | "market"
-    | "post_only"
-    | "immediate_or_cancel"
-    | "fill_or_kill";
-}) => {
+export const placeOrder = async (
+  params: {
+    marketId: number;
+    outcome: "yes" | "no";
+    price: number;
+    quantity: number;
+    side: "bid" | "ask";
+    orderType:
+      | "limit"
+      | "market"
+      | "post_only"
+      | "immediate_or_cancel"
+      | "fill_or_kill";
+  },
+  signer: Signer,
+) => {
   const callMessage = {
     orderbook: {
       place_order_normal: {
@@ -26,6 +30,6 @@ export const placeOrder = async (params: {
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: userSigner });
+  const res = await rollup.call(callMessage, { signer });
   return res;
 };

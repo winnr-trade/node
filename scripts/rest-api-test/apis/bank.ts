@@ -6,10 +6,15 @@ import {
   tokenDeployerAddress,
   tokenDeployerSigner,
   tokenMinterAddress,
+  tokenMinterSigner,
 } from "../config";
 import { bech32m } from "bech32";
 import b58 from "bs58";
 import { testUsd } from "../../../test-data/token/data.json";
+
+export const parseUnit = (amount: number, decimals: number) => {
+  return Math.floor(amount * 10 ** decimals);
+};
 
 export const getTokenMetadata = async (tokenId: string) => {
   try {
@@ -68,6 +73,28 @@ export const createToken = async (params: {
   const token = await bank.tokenMetadata(tokenId);
 
   return token;
+};
+
+export const mintTokens = async (params: {
+  tokenId: string;
+  toAddress: string;
+  amount: number;
+}) => {
+  const mintMessage = {
+    bank: {
+      mint: {
+        mint_to_address: params.toAddress,
+        coins: {
+          amount: params.amount,
+          token_id: params.tokenId,
+        },
+      },
+    },
+  };
+
+  await rollup.call(mintMessage, {
+    signer: tokenMinterSigner,
+  });
 };
 
 export const transferTokens = async (
