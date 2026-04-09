@@ -1,8 +1,10 @@
 use crate::error::IntoOrderbookError;
+use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
 use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shielded_pool::Proof;
 use sov_bank::TokenId;
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
 use tracing::debug;
@@ -20,7 +22,7 @@ impl<S: Spec> OrderbookModule<S> {
     pub(crate) fn place_order_stealth(
         &mut self,
         order_request: OrderRequest,
-        proof: SafeVec<u8>,
+        proof: Proof,
         commitment: HexHash,
         nullifier: HexHash,
         stealth_address: &S::Address,
@@ -44,6 +46,109 @@ impl<S: Spec> OrderbookModule<S> {
             .unwrap();
 
         self.place_order(order_request, &*stealth_address, state)
+    }
+
+    /// Cancel an order.
+    pub(crate) fn cancel_order(
+        &mut self,
+        order_id: OrderId,
+        context: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), OrderbookError> {
+        let sender = context.sender();
+
+        let mut order = self
+            .orders
+            .get(&order_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::OrderNotFound { order_id })?;
+
+        // Verify ownership
+        if order.owner != *sender {
+            return Err(OrderbookError::NotOrderOwner {
+                order_id,
+                owner: order.owner.to_string(),
+                sender: sender.to_string(),
+            });
+        }
+
+        // Must be open
+        if order.status != OrderStatus::Open && order.status != OrderStatus::PartiallyFilled {
+            return Err(OrderbookError::OrderNotCancellable {
+                order_id,
+                status: format!("{:?}", order.status),
+            });
+        }
+
+        let unfilled = order.remaining_quantity;
+
+        // Remove from book
+        self.remove_order(&order, state)?;
+
+        // Release locked resources based on original intent
+        match order.side {
+            Side::Bid => {
+                // BUY order: unlock collateral
+                let locked = order.locked_collateral();
+                self.unlock_collateral(&order.owner, order.market_id, locked, state)?;
+            }
+            Side::Ask => {
+                // SELL order: unreserve shares
+                self.unlock_shares(
+                    &order.owner,
+                    order.market_id,
+                    order.outcome,
+                    unfilled,
+                    state,
+                )?;
+            }
+        }
+
+        // Update order
+        order.status = OrderStatus::Cancelled;
+        order.remaining_quantity = 0;
+        self.orders
+            .set(&order_id, &order, state)
+            .into_orderbook_err()?;
+
+        self.emit_event(
+            state,
+            Event::OrderCancelled {
+                order_id,
+                reason: CancelReason::UserRequested,
+                unfilled_quantity: unfilled,
+            },
+        );
+
+        Ok(())
+    }
+
+    /// Cancel all orders for a market.
+    pub(crate) fn cancel_all_orders(
+        &mut self,
+        market_id: MarketId,
+        outcome: Option<OutcomeSide>,
+        context: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), OrderbookError> {
+        let order_ids = self
+            .user_orders
+            .get(context.sender(), state)
+            .into_orderbook_err()?
+            .unwrap_or_default();
+
+        for order_id in order_ids {
+            if let Some(order) = self.orders.get(&order_id, state).into_orderbook_err()? {
+                if order.market_id == market_id {
+                    if outcome.is_none() || outcome == Some(order.outcome) {
+                        // Ignore errors for individual cancels
+                        let _ = self.cancel_order(order_id, context, state);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Place a new order: normalize to canonical YES-space, match, settle, post.
