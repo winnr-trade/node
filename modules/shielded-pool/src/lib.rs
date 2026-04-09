@@ -19,20 +19,17 @@ pub mod verifier;
 
 use std::iter;
 
-pub use call::CallMessage;
+pub use call::{CallMessage, Proof};
 pub use error::ShieldedPoolError;
 pub use event::ShieldedPoolEvent;
 pub use genesis::ShieldedPoolGenesisConfig;
 
-use crate::{
-    error::IntoShieldedPoolError, hash::poseidon_t4, tree::IncrementalMerkleTree,
-    verifier::verify_proof,
-};
+use crate::{error::IntoShieldedPoolError, hash::poseidon_t4, tree::IncrementalMerkleTree};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    self, Context, CredentialId, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec,
-    StateMap, StateValue, TxState,
+    self, Context, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, SafeVec, Spec, StateMap,
+    StateValue, TxState,
 };
 
 #[derive(Clone, ModuleInfo, ModuleRestApi)]
@@ -178,7 +175,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     fn deposit(
         &mut self,
-        proof: Vec<u8>,
+        proof: Proof,
         token_id: TokenId,
         amount: u64,
         commitment: HexHash,
@@ -205,7 +202,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     fn withdraw(
         &mut self,
-        proof: Vec<u8>,
+        proof: Proof,
         token_id: TokenId,
         amount: u64,
         commitment: HexHash,
@@ -227,7 +224,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     pub fn withdraw_to(
         &mut self,
-        proof: Vec<u8>,
+        proof: Proof,
         commitment: HexHash,
         nullifier: HexHash,
         token_id: TokenId,
@@ -255,7 +252,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     fn transact(
         &mut self,
-        _proof: Vec<u8>,
+        _proof: Proof,
         _token_id: TokenId,
         _amount: u64,
         commitment: HexHash,

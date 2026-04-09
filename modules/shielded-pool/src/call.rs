@@ -2,8 +2,11 @@ use schemars::JsonSchema;
 use sov_bank::TokenId;
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
-    HexHash,
+    HexHash, SafeVec,
 };
+
+pub const PROOF_SIZE_BYTES: usize = 256;
+pub type Proof = SafeVec<u8, PROOF_SIZE_BYTES>;
 
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
 #[schemars(rename = "ShieldedPoolCall")]
@@ -19,7 +22,7 @@ pub enum CallMessage {
 
     /// Deposit collateral into the shielded pool.
     Shield {
-        proof: Vec<u8>,
+        proof: Proof,
         token_id: TokenId,
         amount: u64,
         commitment: HexHash,
@@ -28,7 +31,7 @@ pub enum CallMessage {
 
     /// Withdraw collateral from the shielded pool.
     UnShield {
-        proof: Vec<u8>,
+        proof: Proof,
         token_id: TokenId,
         amount: u64,
         commitment: HexHash,

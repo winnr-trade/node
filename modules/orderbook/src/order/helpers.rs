@@ -23,11 +23,11 @@ impl<S: Spec> OrderbookModule<S> {
 
         if *order_type != OrderType::Market && !canonical_order.price.is_valid() {
             return Err(OrderbookError::InvalidPrice {
-                price: canonical_price.0,
+                price: canonical_order.price.0,
             });
         }
 
-        if quantity == 0 {
+        if *quantity == 0 {
             return Err(OrderbookError::ZeroQuantity);
         }
 

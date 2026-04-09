@@ -138,19 +138,47 @@ impl<S: Spec> Module for OrderbookModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), Self::Error> {
         match msg {
-            CallMessage::PlaceOrderNormal { .. } => {
-                self.place_order_normal(msg.to_order_request(), ctx, state)
-            }
+            CallMessage::PlaceOrderNormal {
+                market_id,
+                outcome,
+                side,
+                price,
+                quantity,
+                order_type,
+            } => self.place_order_normal(
+                OrderRequest {
+                    market_id,
+                    outcome,
+                    side,
+                    price,
+                    quantity,
+                    order_type,
+                },
+                ctx,
+                state,
+            ),
 
             CallMessage::PlaceOrderStealth {
                 proof,
                 commitment,
                 nullifier,
                 stealth_address,
+                market_id,
                 token_id,
-                ..
+                outcome,
+                side,
+                price,
+                quantity,
+                order_type,
             } => self.place_order_stealth(
-                msg.to_order_request(),
+                OrderRequest {
+                    market_id,
+                    outcome,
+                    side,
+                    price,
+                    quantity,
+                    order_type,
+                },
                 proof,
                 commitment,
                 nullifier,
