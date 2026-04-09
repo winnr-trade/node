@@ -70,7 +70,7 @@ impl<S: Spec> MarketModule<S> {
             .positions
             .get(&position_id, &mut acc)
             .unwrap_infallible()
-            .ok_or_else(|| errors::not_found_404("Position", position_id))?;
+            .unwrap_or_default();
 
         Ok(position.into())
     }
