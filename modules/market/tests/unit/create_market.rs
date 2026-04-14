@@ -1,6 +1,6 @@
 use crate::utils::{create_test_market, get_market, get_market_collateral};
 use crate::{setup, RT, S};
-use market::{CallMessage, MarketModule, MarketStatus};
+use market::{CallMessage, MarketModule, MarketStatus, Resolver};
 use shared_types::MarketId;
 use sov_modules_api::SafeString;
 use sov_test_utils::{AsUser, TransactionTestCase};
@@ -30,10 +30,13 @@ fn test_create_market_success() {
     assert_eq!(market.resolution_time, resolution_time);
     assert_eq!(market.status, MarketStatus::Active);
     assert_eq!(market.outcome, None);
-    assert_eq!(market.resolver, user.address());
+    assert_eq!(market.resolver, Resolver::Address(user.address()));
     assert_eq!(market.total_yes_shares, 0);
     assert_eq!(market.total_no_shares, 0);
-    assert!(market.created_at > 0, "created_at should be set to current time");
+    assert!(
+        market.created_at > 0,
+        "created_at should be set to current time"
+    );
     assert_eq!(get_market_collateral(&runner, market_id), 0);
 }
 
@@ -46,7 +49,7 @@ fn test_create_market_resolution_time_in_past_fails() {
         question: SafeString::from_str("Will it rain?").ok().unwrap(),
         collateral_token: test_data.collateral_token_id,
         resolution_time: 0,
-        resolver: user.address(),
+        resolver: Resolver::Address(user.address()),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -97,17 +100,17 @@ fn test_create_multiple_markets() {
     assert_eq!(m1.id, MarketId(1));
     assert_eq!(m1.question.to_string(), "Will BTC hit 100k?");
     assert_eq!(m1.creator, user.address());
-    assert_eq!(m1.resolver, user.address());
+    assert_eq!(m1.resolver, Resolver::Address(user.address()));
 
     let m2 = get_market(&runner, MarketId(2));
     assert_eq!(m2.id, MarketId(2));
     assert_eq!(m2.question.to_string(), "Will ETH hit 10k?");
     assert_eq!(m2.creator, admin.address());
-    assert_eq!(m2.resolver, user.address());
+    assert_eq!(m2.resolver, Resolver::Address(user.address()));
 
     let m3 = get_market(&runner, MarketId(3));
     assert_eq!(m3.id, MarketId(3));
     assert_eq!(m3.question.to_string(), "Will SOL hit 1k?");
     assert_eq!(m3.creator, user.address());
-    assert_eq!(m3.resolver, admin.address());
+    assert_eq!(m3.resolver, Resolver::Address(admin.address()));
 }

@@ -4,23 +4,46 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::MarketId;
+use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{SafeString, Spec};
 use std::str::FromStr;
 
 pub use shared_types::{MarketStatus, Outcome};
 
+// ============================================================================
+// RESOLVER TYPES
+// ============================================================================
+
+/// Defines how a market gets resolved.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
+#[serde(bound(serialize = "", deserialize = ""))]
+#[schemars(bound = "S: Spec", rename = "Resolver")]
+pub enum Resolver<S: Spec> {
+    /// A designated address that can submit the outcome directly.
+    Address(S::Address),
+
+    /// Pyth oracle price feed. Outcome is `Yes` if the price at resolution
+    /// time falls within `[lower_bound, upper_bound]`, `No` otherwise.
+    /// A `None` bound means unbounded in that direction.
+    Pyth {
+        /// Pyth price feed identifier (32 bytes).
+        feed_id: [u8; 32],
+        /// Inclusive lower bound on the price. `None` = no floor.
+        lower_bound: Option<i64>,
+        /// Inclusive upper bound on the price. `None` = no ceiling.
+        upper_bound: Option<i64>,
+    },
+
+    /// Optimistic oracle (UMA-style propose → dispute → finalize).
+    /// Resolution mechanics to be implemented in the future.
+    Optimistic,
+}
+
 /// A prediction market.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Market<S: Spec> {
     /// Unique market identifier.
     pub id: MarketId,
@@ -36,8 +59,8 @@ pub struct Market<S: Spec> {
     pub status: MarketStatus,
     /// Final outcome (set after resolution).
     pub outcome: Option<Outcome>,
-    /// Designated resolver address.
-    pub resolver: S::Address,
+    /// How this market gets resolved.
+    pub resolver: Resolver<S>,
     /// Total YES shares in circulation.
     pub total_yes_shares: u64,
     /// Total NO shares in circulation.

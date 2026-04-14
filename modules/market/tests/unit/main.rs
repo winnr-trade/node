@@ -12,6 +12,7 @@ mod halt_resume;
 mod mint_shares;
 mod redeem_shares;
 mod resolve_market;
+mod resolver_variants;
 mod utils;
 
 generate_optimistic_runtime!(
@@ -31,13 +32,12 @@ pub struct TestData<S: Spec> {
 pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
     let collateral_token_name = TestTokenName::new("collateral".to_string());
 
-    let genesis_config = HighLevelOptimisticGenesisConfig::generate()
-        .add_accounts_with_token(
-            &collateral_token_name,
-            false,
-            2,
-            Amount::new(1_000_000_000),
-        );
+    let genesis_config = HighLevelOptimisticGenesisConfig::generate().add_accounts_with_token(
+        &collateral_token_name,
+        false,
+        2,
+        Amount::new(1_000_000_000),
+    );
 
     let mut users = genesis_config.additional_accounts().to_vec();
     let admin = users.pop().unwrap();

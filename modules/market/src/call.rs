@@ -1,16 +1,29 @@
 //! Call messages for the prediction market module.
 
+use crate::types::Resolver;
 use schemars::JsonSchema;
 use shared_types::{MarketId, Outcome};
 use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{SafeString, Spec};
 
+/// Data required to resolve a market, depending on the resolver type.
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolutionData {
+    /// Resolve by designated address: caller provides the outcome directly.
+    Address { outcome: Outcome },
+    /// Resolve via Pyth oracle: caller provides the price update proof.
+    Pyth { price_update_data: Vec<u8> },
+}
+
 /// Call messages for the prediction market module.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, UniversalWallet)]
 #[schemars(bound = "S: Spec", rename = "MarketCallMessage")]
 #[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub enum CallMessage<S: Spec> {
     /// Create a new prediction market.
     CreateMarket {
@@ -20,8 +33,8 @@ pub enum CallMessage<S: Spec> {
         collateral_token: TokenId,
         /// Slot after which resolution is allowed.
         resolution_time: u64,
-        /// Address authorized to resolve this market.
-        resolver: S::Address,
+        /// How this market should be resolved.
+        resolver: Resolver<S>,
     },
 
     /// Mint YES and NO shares by depositing collateral.
@@ -44,8 +57,8 @@ pub enum CallMessage<S: Spec> {
     ResolveMarket {
         /// Market to resolve.
         market_id: MarketId,
-        /// Final outcome.
-        outcome: Outcome,
+        /// Resolution data matching the market's resolver type.
+        data: ResolutionData,
     },
 
     /// Claim winnings from a resolved market.
@@ -62,13 +75,13 @@ pub enum CallMessage<S: Spec> {
         support: bool,
     },
 
-    /// Halt trading on a market (admin/resolver only).
+    /// Halt trading on a market (admin only).
     HaltMarket {
         /// Market to halt.
         market_id: MarketId,
     },
 
-    /// Resume trading on a halted market (admin/resolver only).
+    /// Resume trading on a halted market (admin only).
     ResumeMarket {
         /// Market to resume.
         market_id: MarketId,

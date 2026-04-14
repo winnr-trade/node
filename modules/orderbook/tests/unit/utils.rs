@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{RT, S};
-use market::MarketModule;
+use market::{MarketModule, Resolver};
 use orderbook::{
     MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey, UserMarketKey,
 };
@@ -101,7 +101,7 @@ pub fn create_test_market(
         question: SafeString::from_str("Will this test pass?").ok().unwrap(),
         collateral_token,
         resolution_time,
-        resolver: resolver.address(),
+        resolver: market::Resolver::Address(resolver.address()),
     };
 
     runner.execute_transaction(TransactionTestCase {

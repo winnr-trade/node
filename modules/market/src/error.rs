@@ -70,6 +70,19 @@ pub enum MarketError {
     #[error("Unauthorized to {action}")]
     Unauthorized { action: String },
 
+    #[error("Invalid resolver type for market {market_id}: expected {expected}, got {actual}")]
+    InvalidResolverType {
+        market_id: MarketId,
+        expected: String,
+        actual: String,
+    },
+
+    #[error("Pyth resolution is not yet implemented")]
+    PythResolutionNotImplemented,
+
+    #[error("Optimistic oracle resolution is not yet implemented")]
+    OptimisticResolutionNotImplemented,
+
     // #[error(transparent)]
     // Any(#[from] anyhow::Error),
     #[error("{0}")]

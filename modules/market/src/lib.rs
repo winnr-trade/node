@@ -21,7 +21,7 @@ pub use query::*;
 // #[cfg(test)]
 // mod tests;
 
-pub use call::CallMessage;
+pub use call::{CallMessage, ResolutionData};
 pub use error::MarketError;
 pub use event::Event;
 pub use genesis::MarketGenesisConfig;
@@ -127,8 +127,8 @@ impl<S: Spec> Module for MarketModule<S> {
                 self.redeem_shares(market_id, amount, ctx, state)
             }
 
-            CallMessage::ResolveMarket { market_id, outcome } => {
-                self.resolve_market(market_id, outcome, ctx, state)
+            CallMessage::ResolveMarket { market_id, data } => {
+                self.resolve_market(market_id, data, ctx, state)
             }
 
             CallMessage::SetSupportedCollateralToken {
@@ -160,7 +160,7 @@ impl<S: Spec> MarketModule<S> {
         question: SafeString,
         collateral_token: TokenId,
         resolution_time: u64,
-        resolver: S::Address,
+        resolver: Resolver<S>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -243,7 +243,7 @@ impl<S: Spec> MarketModule<S> {
         info!(
             market_id = %market_id,
             creator = %ctx.sender(),
-            resolver = %resolver,
+            resolver = ?resolver,
             resolution_time = resolution_time,
             "Market created"
         );
@@ -256,7 +256,7 @@ impl<S: Spec> MarketModule<S> {
                 creator: ctx.sender().to_string(),
                 collateral_token: format!("{:?}", collateral_token),
                 resolution_time,
-                resolver: resolver.to_string(),
+                resolver: format!("{:?}", resolver),
             },
         );
 
@@ -470,7 +470,7 @@ impl<S: Spec> MarketModule<S> {
     fn resolve_market(
         &mut self,
         market_id: MarketId,
-        outcome: Outcome,
+        data: call::ResolutionData,
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -479,15 +479,6 @@ impl<S: Spec> MarketModule<S> {
             .get(&market_id, state)
             .into_market_err()?
             .ok_or(MarketError::MarketNotFound { market_id })?;
-
-        // Verify caller is the designated resolver
-        if *context.sender() != market.resolver {
-            return Err(MarketError::UnauthorizedResolver {
-                market_id,
-                expected: market.resolver.to_string(),
-                actual: context.sender().to_string(),
-            });
-        }
 
         // Check resolution time has passed
         let current_time = self
@@ -507,6 +498,35 @@ impl<S: Spec> MarketModule<S> {
         if market.status == MarketStatus::Resolved {
             return Err(MarketError::MarketAlreadyResolved { market_id });
         }
+
+        // Dispatch based on resolver type
+        let outcome = match (&market.resolver, &data) {
+            (Resolver::Address(resolver_addr), call::ResolutionData::Address { outcome }) => {
+                // Verify caller is the designated resolver
+                if *context.sender() != *resolver_addr {
+                    return Err(MarketError::UnauthorizedResolver {
+                        market_id,
+                        expected: resolver_addr.to_string(),
+                        actual: context.sender().to_string(),
+                    });
+                }
+                *outcome
+            }
+            (Resolver::Pyth { .. }, call::ResolutionData::Pyth { .. }) => {
+                return Err(MarketError::PythResolutionNotImplemented);
+            }
+            (Resolver::Optimistic, _) => {
+                return Err(MarketError::OptimisticResolutionNotImplemented);
+            }
+            // Mismatched resolver type and resolution data
+            (resolver, _) => {
+                return Err(MarketError::InvalidResolverType {
+                    market_id,
+                    expected: format!("{:?}", resolver),
+                    actual: format!("{:?}", data),
+                });
+            }
+        };
 
         // Update market
         market.status = MarketStatus::Resolved;
@@ -693,8 +713,8 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err()?
             .ok_or(MarketError::MarketNotFound { market_id })?;
 
-        // Only admin or resolver can change status
-        if *context.sender() != admin && *context.sender() != market.resolver {
+        // Only admin can change status
+        if *context.sender() != admin {
             return Err(MarketError::Unauthorized {
                 action: "change market status".to_string(),
             });

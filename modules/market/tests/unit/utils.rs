@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use crate::{RT, S};
-use market::{CallMessage, Market, MarketModule, Position, PositionKey};
+use market::ResolutionData;
+use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
 use shared_types::{MarketId, Outcome};
 use sov_bank::TokenId;
 use sov_modules_api::da::Time;
@@ -49,7 +50,7 @@ pub fn create_test_market(
         question: SafeString::from_str(question).ok().unwrap(),
         collateral_token,
         resolution_time,
-        resolver: resolver.address(),
+        resolver: Resolver::Address(resolver.address()),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -94,7 +95,10 @@ pub fn resolve_market(
     market_id: MarketId,
     outcome: Outcome,
 ) {
-    let msg = CallMessage::ResolveMarket { market_id, outcome };
+    let msg = CallMessage::ResolveMarket {
+        market_id,
+        data: ResolutionData::Address { outcome },
+    };
 
     runner.execute_transaction(TransactionTestCase {
         input: resolver.create_plain_message::<RT, MarketModule<S>>(msg),
@@ -152,4 +156,46 @@ pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) ->
             .expect("failed to read market_collateral state")
             .unwrap_or(0)
     })
+}
+
+/// Helper: create a market with an explicit resolver and assert success.
+pub fn create_test_market_with_resolver(
+    runner: &mut TestRunner<RT, S>,
+    creator: &TestUser<S>,
+    resolver: Resolver<S>,
+    question: &str,
+    collateral_token: TokenId,
+    resolution_time_offset_ms: u64,
+) -> (MarketId, u64) {
+    let resolution_time = get_time_ms(runner) + resolution_time_offset_ms;
+
+    let expected_id = runner.query_state(|state| {
+        runner
+            .runtime()
+            .market
+            .next_market_id
+            .get(state)
+            .expect("failed to read next_market_id")
+            .expect("next_market_id not set")
+    });
+
+    let msg = CallMessage::CreateMarket {
+        question: SafeString::from_str(question).ok().unwrap(),
+        collateral_token,
+        resolution_time,
+        resolver,
+    };
+
+    runner.execute_transaction(TransactionTestCase {
+        input: creator.create_plain_message::<RT, MarketModule<S>>(msg),
+        assert: Box::new(|result, _state| {
+            assert!(
+                result.tx_receipt.is_successful(),
+                "create_market failed: {:?}",
+                result.tx_receipt
+            );
+        }),
+    });
+
+    (MarketId(expected_id), resolution_time)
 }

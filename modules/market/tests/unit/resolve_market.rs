@@ -1,5 +1,6 @@
 use crate::utils::{create_test_market, get_market, resolve_market as resolve_market_helper};
 use crate::{setup, RT, S};
+use market::ResolutionData;
 use market::{CallMessage, MarketModule, MarketStatus};
 use shared_types::{MarketId, Outcome};
 use sov_test_utils::{AsUser, TransactionTestCase};
@@ -99,7 +100,9 @@ fn test_resolve_market_wrong_resolver_fails() {
     // Try to resolve with admin (not the designated resolver)
     let resolve_msg = CallMessage::ResolveMarket {
         market_id,
-        outcome: Outcome::Yes,
+        data: ResolutionData::Address {
+            outcome: Outcome::Yes,
+        },
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -136,7 +139,9 @@ fn test_resolve_market_before_resolution_time_fails() {
     // Don't advance time — try to resolve immediately
     let resolve_msg = CallMessage::ResolveMarket {
         market_id,
-        outcome: Outcome::Yes,
+        data: ResolutionData::Address {
+            outcome: Outcome::Yes,
+        },
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -162,7 +167,9 @@ fn test_resolve_nonexistent_market_fails() {
 
     let resolve_msg = CallMessage::ResolveMarket {
         market_id: MarketId(999),
-        outcome: Outcome::Yes,
+        data: ResolutionData::Address {
+            outcome: Outcome::Yes,
+        },
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -199,7 +206,9 @@ fn test_resolve_market_twice_fails() {
     // Second resolution should fail
     let resolve_msg_2 = CallMessage::ResolveMarket {
         market_id,
-        outcome: Outcome::No,
+        data: ResolutionData::Address {
+            outcome: Outcome::No,
+        },
     };
 
     runner.execute_transaction(TransactionTestCase {
