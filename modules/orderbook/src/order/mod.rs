@@ -1,7 +1,7 @@
-use crate::{error::IntoOrderbookError, event::CancelReason, UserMarketKey};
+use crate::{error::IntoOrderbookError, UserMarketKey};
 use market::{MarketId, PositionKey};
-use shared_types::{OrderId, OrderStatus, OutcomeSide, Side};
-use sov_modules_api::{Context, EventEmitter, Spec, TxState};
+use shared_types::OutcomeSide;
+use sov_modules_api::{Spec, TxState};
 
 pub mod book;
 pub mod canonical;
@@ -9,7 +9,7 @@ pub mod helpers;
 pub mod matching;
 pub mod placement;
 
-use crate::{Event, OrderbookError, OrderbookModule};
+use crate::{OrderbookError, OrderbookModule};
 
 impl<S: Spec> OrderbookModule<S> {
     pub(crate) fn lock_collateral(
