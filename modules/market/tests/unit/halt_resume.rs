@@ -35,7 +35,7 @@ fn test_halt_market_by_admin() {
 
     // Verify market status is Halted
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Halted);
+    assert_eq!(market.status(), MarketStatus::Halted);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn test_halt_market_unauthorized_fails() {
 
     // Market should still be Active
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
 }
 
 #[test]
@@ -97,7 +97,10 @@ fn test_resume_market_after_halt() {
         }),
     });
 
-    assert_eq!(get_market(&runner, market_id).status, MarketStatus::Halted);
+    assert_eq!(
+        get_market(&runner, market_id).status(),
+        MarketStatus::Halted
+    );
 
     // Resume
     let resume_msg = CallMessage::ResumeMarket { market_id };
@@ -113,7 +116,10 @@ fn test_resume_market_after_halt() {
     });
 
     // Verify market is Active again
-    assert_eq!(get_market(&runner, market_id).status, MarketStatus::Active);
+    assert_eq!(
+        get_market(&runner, market_id).status(),
+        MarketStatus::Active
+    );
 }
 
 #[test]
@@ -154,7 +160,10 @@ fn test_resume_market_unauthorized_fails() {
     });
 
     // Market should still be Halted
-    assert_eq!(get_market(&runner, market_id).status, MarketStatus::Halted);
+    assert_eq!(
+        get_market(&runner, market_id).status(),
+        MarketStatus::Halted
+    );
 }
 
 #[test]

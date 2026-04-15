@@ -139,11 +139,11 @@ impl<S: Spec> Module for MarketModule<S> {
             CallMessage::ClaimWinnings { market_id } => self.claim_winnings(market_id, ctx, state),
 
             CallMessage::HaltMarket { market_id } => {
-                self.set_market_status(market_id, MarketStatus::Halted, ctx, state)
+                self.set_market_status(market_id, true, ctx, state)
             }
 
             CallMessage::ResumeMarket { market_id } => {
-                self.set_market_status(market_id, MarketStatus::Active, ctx, state)
+                self.set_market_status(market_id, false, ctx, state)
             }
         }
     }
@@ -225,7 +225,7 @@ impl<S: Spec> MarketModule<S> {
             creator: ctx.sender().clone(),
             collateral_token,
             resolution_time,
-            status: MarketStatus::Active,
+            halted: false,
             outcome: None,
             resolver: resolver.clone(),
             total_yes_shares: 0,
@@ -374,7 +374,7 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err_flat()?;
 
         // Can redeem from active or halted markets, not resolved
-        if market.status == MarketStatus::Resolved {
+        if market.outcome.is_some() {
             return Err(MarketError::MarketAlreadyResolved { market_id });
         }
 
@@ -495,7 +495,7 @@ impl<S: Spec> MarketModule<S> {
         }
 
         // Market must not already be resolved
-        if market.status == MarketStatus::Resolved {
+        if market.outcome.is_some() {
             return Err(MarketError::MarketAlreadyResolved { market_id });
         }
 
@@ -529,7 +529,6 @@ impl<S: Spec> MarketModule<S> {
         };
 
         // Update market
-        market.status = MarketStatus::Resolved;
         market.outcome = Some(outcome);
         self.markets
             .set(&market_id, &market, state)
@@ -568,13 +567,9 @@ impl<S: Spec> MarketModule<S> {
             .ok_or(MarketError::MarketNotFound { market_id })?;
 
         // Market must be resolved
-        if market.status != MarketStatus::Resolved {
-            return Err(MarketError::MarketNotResolved { market_id });
-        }
-
         let outcome = market
             .outcome
-            .ok_or_else(|| anyhow::anyhow!("Resolved market has no outcome"))?;
+            .ok_or(MarketError::MarketNotResolved { market_id })?;
 
         // Get user position
         let position_key: PositionKey<S> = PositionKey {
@@ -697,11 +692,11 @@ impl<S: Spec> MarketModule<S> {
         Ok(())
     }
 
-    /// Set market status (halt/resume)
+    /// Set market halted state (halt/resume)
     fn set_market_status(
         &mut self,
         market_id: MarketId,
-        new_status: MarketStatus,
+        halted: bool,
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -721,12 +716,12 @@ impl<S: Spec> MarketModule<S> {
         }
 
         // Cannot change status of resolved markets
-        if market.status == MarketStatus::Resolved {
+        if market.outcome.is_some() {
             return Err(MarketError::MarketAlreadyResolved { market_id });
         }
 
-        let old_status = market.status;
-        market.status = new_status;
+        let old_status = market.status();
+        market.halted = halted;
         self.markets
             .set(&market_id, &market, state)
             .into_market_err()?;
@@ -736,7 +731,7 @@ impl<S: Spec> MarketModule<S> {
             Event::MarketStatusChanged {
                 market_id,
                 old_status,
-                new_status,
+                new_status: market.status(),
             },
         );
 
@@ -759,10 +754,10 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err()?
             .ok_or(MarketError::MarketNotFound { market_id })?;
 
-        if market.status != MarketStatus::Active {
+        if market.status() != MarketStatus::Active {
             return Err(MarketError::MarketNotActive {
                 market_id,
-                status: market.status,
+                status: market.status(),
             });
         }
 

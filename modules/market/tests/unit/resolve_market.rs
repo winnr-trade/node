@@ -27,7 +27,7 @@ fn test_resolve_market_success() {
 
     // Verify market state after resolution
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Resolved);
+    assert_eq!(market.status(), MarketStatus::Resolved);
     assert_eq!(market.outcome, Some(Outcome::Yes));
 }
 
@@ -51,7 +51,7 @@ fn test_resolve_market_outcome_no() {
     resolve_market_helper(&mut runner, &user, market_id, Outcome::No);
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Resolved);
+    assert_eq!(market.status(), MarketStatus::Resolved);
     assert_eq!(market.outcome, Some(Outcome::No));
 }
 
@@ -75,7 +75,7 @@ fn test_resolve_market_outcome_invalid() {
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Invalid);
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Resolved);
+    assert_eq!(market.status(), MarketStatus::Resolved);
     assert_eq!(market.outcome, Some(Outcome::Invalid));
 }
 
@@ -117,7 +117,7 @@ fn test_resolve_market_wrong_resolver_fails() {
 
     // Market should still be active
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.outcome, None);
 }
 
@@ -156,7 +156,7 @@ fn test_resolve_market_before_resolution_time_fails() {
 
     // Market should still be active
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.outcome, None);
 }
 

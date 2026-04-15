@@ -28,7 +28,7 @@ fn test_create_market_success() {
     assert_eq!(market.creator, user.address());
     assert_eq!(market.collateral_token, collateral);
     assert_eq!(market.resolution_time, resolution_time);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.outcome, None);
     assert_eq!(market.resolver, Resolver::Address(user.address()));
     assert_eq!(market.total_yes_shares, 0);

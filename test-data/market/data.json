@@ -81,13 +81,13 @@
     {
       "question": "Will AI replace 50% of customer service jobs by 2027?",
       "resolver_type": "optimistic",
-      "resolver": "Optimistic",
+      "resolver": { "Optimistic": {} },
       "resolution_time": 1798828800
     },
     {
       "question": "Will a major central bank launch a retail CBDC in 2026?",
       "resolver_type": "optimistic",
-      "resolver": "Optimistic",
+      "resolver": { "Optimistic": {} },
       "resolution_time": 1798742400
     }
   ]

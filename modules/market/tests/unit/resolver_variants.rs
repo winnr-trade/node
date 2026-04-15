@@ -32,7 +32,7 @@ fn test_create_market_with_pyth_resolver() {
     );
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.resolver, resolver);
 }
 
@@ -77,7 +77,7 @@ fn test_create_market_with_optimistic_resolver() {
     );
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.resolver, Resolver::Optimistic {});
 }
 
@@ -124,7 +124,7 @@ fn test_resolve_pyth_market_returns_not_implemented() {
     });
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn test_resolve_optimistic_market_returns_not_implemented() {
     });
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
 }
 
 // ============================================================================
@@ -206,7 +206,7 @@ fn test_resolve_address_market_with_pyth_data_fails() {
     });
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
 }
 
 #[test]
@@ -249,5 +249,5 @@ fn test_resolve_pyth_market_with_address_data_fails() {
     });
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.status, MarketStatus::Active);
+    assert_eq!(market.status(), MarketStatus::Active);
 }

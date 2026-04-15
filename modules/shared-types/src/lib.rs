@@ -100,8 +100,6 @@ pub enum MarketStatus {
     Active,
     /// Trading is temporarily halted.
     Halted,
-    /// Resolution time passed, awaiting outcome submission.
-    ResolutionPending,
     /// Market has been resolved with a final outcome.
     Resolved,
 }

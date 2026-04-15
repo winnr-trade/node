@@ -4,6 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::MarketId;
+use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{HexHash, SafeString, Spec};
 use std::str::FromStr;
@@ -60,11 +61,11 @@ pub struct Market<S: Spec> {
     /// Address of the market creator.
     pub creator: S::Address,
     /// Token used as collateral.
-    pub collateral_token: sov_bank::TokenId,
+    pub collateral_token: TokenId,
     /// Slot after which market can be resolved.
     pub resolution_time: u64,
-    /// Current market status.
-    pub status: MarketStatus,
+    /// Whether trading is halted by admin.
+    pub halted: bool,
     /// Final outcome (set after resolution).
     pub outcome: Option<Outcome>,
     /// How this market gets resolved.
@@ -75,6 +76,19 @@ pub struct Market<S: Spec> {
     pub total_no_shares: u64,
     /// Slot when market was created.
     pub created_at: u64,
+}
+
+impl<S: Spec> Market<S> {
+    /// Derive the market status from stored fields.
+    pub fn status(&self) -> MarketStatus {
+        if self.outcome.is_some() {
+            MarketStatus::Resolved
+        } else if self.halted {
+            MarketStatus::Halted
+        } else {
+            MarketStatus::Active
+        }
+    }
 }
 
 /// User's position in a market.

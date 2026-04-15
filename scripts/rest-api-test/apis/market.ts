@@ -32,7 +32,7 @@ type ResolverAddress = {
 
 type ResolverPyth = {
   Pyth: {
-    feed_id: string;
+    feed_id: number[];
     lower_bound?: number;
     upper_bound?: number;
   };
@@ -72,19 +72,42 @@ export const createMarkets = async (collateralTokenId: string) => {
   const currentTime = await chainState.time();
 
   for (const marketData of testMarketData.markets) {
+    let resolver: Resolver;
+    if (marketData.resolver_type === "address") {
+      resolver = { Address: adminAddress };
+    } else if (marketData.resolver_type === "pyth") {
+      const r = marketData.resolver as {
+        Pyth: {
+          feed_id: number[];
+          lower_bound: number | null;
+          upper_bound: number | null;
+        };
+      };
+      resolver = {
+        Pyth: {
+          feed_id: r.Pyth.feed_id,
+          lower_bound: r.Pyth.lower_bound ?? undefined,
+          upper_bound: r.Pyth.upper_bound ?? undefined,
+        },
+      };
+    } else if (marketData.resolver_type === "optimistic") {
+      resolver = { Optimistic: {} };
+    } else {
+      throw new Error(`Unknown resolver type: ${marketData.resolver_type}`);
+    }
+
     const callMessage = {
       market: {
         create_market: {
           question: marketData.question,
           collateral_token: collateralTokenId,
           resolution_time: currentTime + 864_000, // 24 hours from now
-          resolver: adminAddress,
+          resolver,
         },
       },
     };
 
     const res = await rollup.call(callMessage, { signer: tokenMinterSigner });
-    // console.log(`Created market with question: "${marketData.question}"`);
   }
 };
 

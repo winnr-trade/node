@@ -54,10 +54,10 @@ impl<S: Spec> OrderbookModule<S> {
                 market_id: *market_id,
             })?;
 
-        if market.status != MarketStatus::Active {
+        if market.status() != MarketStatus::Active {
             return Err(OrderbookError::MarketNotActive {
                 market_id: *market_id,
-                status: format!("{:?}", market.status),
+                status: format!("{:?}", market.status()),
             });
         }
 
