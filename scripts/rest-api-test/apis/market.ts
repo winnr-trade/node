@@ -26,14 +26,28 @@ export const setSupportedCollateralToken = async (params: {
   return res;
 };
 
+type ResolverAddress = {
+  Address: string;
+};
+
+type ResolverPyth = {
+  Pyth: {
+    feed_id: string;
+    lower_bound?: number;
+    upper_bound?: number;
+  };
+};
+
+type ResolverOptimistic = { Optimistic: {} };
+
+export type Resolver = ResolverAddress | ResolverPyth | ResolverOptimistic;
+
 export const createMarket = async (params: {
   question: string;
   collateralTokenId: string;
   resolutionTime: number;
-  resolver: string;
+  resolver: Resolver;
 }) => {
-  const currentTime = await chainState.time();
-
   const callMessage = {
     market: {
       create_market: {
@@ -45,8 +59,13 @@ export const createMarket = async (params: {
     },
   };
 
-  const res = await rollup.call(callMessage, { signer: tokenMinterSigner });
-  return res;
+  try {
+    const res = await rollup.call(callMessage, { signer: tokenMinterSigner });
+    return res;
+  } catch (error) {
+    console.error("Error:\n", JSON.stringify(error));
+    throw error;
+  }
 };
 
 export const createMarkets = async (collateralTokenId: string) => {

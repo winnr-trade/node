@@ -26,13 +26,14 @@ import {
   createMarket,
   mintShares,
   setSupportedCollateralToken,
+  type Resolver,
 } from "./apis/market";
 import { placeOrder } from "./apis/orderbook";
 import { testUsd } from "../../test-data/token/data.json";
 import testMarketData from "../../test-data/market/data.json";
 
 const main = async () => {
-  console.log("Rollup context:", rollup.context);
+  console.log("Rollup chain id:", rollup.context.defaultTxDetails.chai_id);
 
   // Create a test token
   const tokenId = getTokenId({
@@ -78,13 +79,31 @@ const main = async () => {
 
   console.log("Creating test markets...");
   for (const m of testMarketData.markets) {
+    let resolver = m.resolver as any;
+    if (m.resolver_type === "address") {
+      resolver = { Address: adminAddress };
+    } else if (m.resolver_type === "pyth") {
+      resolver = {
+        Pyth: {
+          feed_id: resolver.Pyth.feed_id,
+          lower_bound: resolver.Pyth.lower_bound,
+          upper_bound: resolver.Pyth.upper_bound,
+        },
+      };
+    } else if (m.resolver_type === "optimistic") {
+      resolver = { Optimistic: {} };
+    } else {
+      throw new Error(`Unknown resolver type: ${m.resolver_type}`);
+    }
+
     await createMarket({
       question: m.question,
       collateralTokenId: tokenId,
       resolutionTime: currentTime + 864_000, // 24 hours from now
-      resolver: adminAddress,
+      resolver,
     });
   }
+
   const marketId = 0;
   console.log(`Providing liquidity to market...`);
 

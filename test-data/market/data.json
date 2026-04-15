@@ -2,53 +2,93 @@
   "markets": [
     {
       "question": "Will Bitcoin close above $80,000 on Dec 31, 2026?",
-      "resolver": "0x0000000000000000000000000000000000000001",
+      "resolver_type": "address",
+      "resolver": { "Address": "ADMIN_ADDRESS" },
       "resolution_time": 1798742400
     },
     {
       "question": "Will Ethereum reach a new all-time high before July 1, 2026?",
-      "resolver": "0x0000000000000000000000000000000000000002",
+      "resolver_type": "address",
+      "resolver": { "Address": "ADMIN_ADDRESS" },
       "resolution_time": 1782931200
     },
     {
       "question": "Will the S&P 500 index close above 6000 by the end of 2026?",
-      "resolver": "0x0000000000000000000000000000000000000003",
+      "resolver_type": "address",
+      "resolver": { "Address": "ADMIN_ADDRESS" },
       "resolution_time": 1798742400
     },
     {
       "question": "Will Solana (SOL) price exceed $500 before Jan 1, 2027?",
-      "resolver": "0x0000000000000000000000000000000000000004",
+      "resolver_type": "address",
+      "resolver": { "Address": "ADMIN_ADDRESS" },
+      "resolution_time": 1798828800
+    },
+    {
+      "question": "Will BTC/USD be above $100,000 by end of 2026?",
+      "resolver_type": "pyth",
+      "resolver": {
+        "Pyth": {
+          "feed_id": [
+            227, 175, 145, 13, 115, 157, 121, 136, 106, 205, 141, 30, 161, 137,
+            207, 180, 196, 232, 113, 21, 171, 164, 41, 228, 246, 73, 72, 91,
+            157, 10, 12, 165
+          ],
+          "lower_bound": 10000000,
+          "upper_bound": null
+        }
+      },
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will ETH/USD stay between $2,000 and $5,000 in Q4 2026?",
+      "resolver_type": "pyth",
+      "resolver": {
+        "Pyth": {
+          "feed_id": [
+            255, 97, 73, 27, 195, 0, 16, 160, 9, 237, 155, 243, 44, 89, 230,
+            184, 183, 156, 194, 30, 227, 96, 14, 142, 141, 39, 196, 241, 75,
+            222, 201, 14
+          ],
+          "lower_bound": 200000,
+          "upper_bound": 500000
+        }
+      },
+      "resolution_time": 1798742400
+    },
+    {
+      "question": "Will SOL/USD drop below $50 before 2027?",
+      "resolver_type": "pyth",
+      "resolver": {
+        "Pyth": {
+          "feed_id": [
+            239, 13, 139, 111, 218, 44, 235, 164, 29, 161, 93, 64, 149, 209,
+            218, 57, 42, 13, 47, 142, 208, 198, 199, 188, 15, 76, 250, 200, 194,
+            128, 181, 109
+          ],
+          "lower_bound": null,
+          "upper_bound": 5000
+        }
+      },
       "resolution_time": 1798828800
     },
     {
       "question": "Will the price of gold surpass $3,000 per ounce in 2026?",
-      "resolver": "0x0000000000000000000000000000000000000005",
+      "resolver_type": "address",
+      "resolver": { "Address": "ADMIN_ADDRESS" },
       "resolution_time": 1798742400
     },
     {
-      "question": "Will US inflation fall below 2% in any quarter of 2026?",
-      "resolver": "0x0000000000000000000000000000000000000006",
-      "resolution_time": 1798742400
-    },
-    {
-      "question": "Will Apple (AAPL) stock split again before 2027?",
-      "resolver": "0x0000000000000000000000000000000000000007",
+      "question": "Will AI replace 50% of customer service jobs by 2027?",
+      "resolver_type": "optimistic",
+      "resolver": "Optimistic",
       "resolution_time": 1798828800
     },
     {
-      "question": "Will Uniswap (UNI) reach a $50 price in 2026?",
-      "resolver": "0x0000000000000000000000000000000000000008",
+      "question": "Will a major central bank launch a retail CBDC in 2026?",
+      "resolver_type": "optimistic",
+      "resolver": "Optimistic",
       "resolution_time": 1798742400
-    },
-    {
-      "question": "Will the 10-year US Treasury yield exceed 6% in 2026?",
-      "resolver": "0x0000000000000000000000000000000000000009",
-      "resolution_time": 1798742400
-    },
-    {
-      "question": "Will Dogecoin (DOGE) be in the top 10 cryptocurrencies by market cap on Jan 1, 2027?",
-      "resolver": "0x000000000000000000000000000000000000000A",
-      "resolution_time": 1798828800
     }
   ]
 }
