@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::MarketId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
-use sov_modules_api::{SafeString, Spec};
+use sov_modules_api::{HexHash, SafeString, Spec};
 use std::str::FromStr;
 
 pub use shared_types::{MarketStatus, Outcome};
@@ -28,15 +28,14 @@ pub enum Resolver<S: Spec> {
     /// A `None` bound means unbounded in that direction.
     Pyth {
         /// Pyth price feed identifier (32 bytes).
-        feed_id: [u8; 32],
+        feed_id: HexHash,
         /// Inclusive lower bound on the price. `None` = no floor.
-        lower_bound: Option<i64>,
+        lower_bound: Option<u64>,
         /// Inclusive upper bound on the price. `None` = no ceiling.
-        upper_bound: Option<i64>,
+        upper_bound: Option<u64>,
     },
 
-    /// Optimistic oracle (UMA-style propose → dispute → finalize).
-    /// Resolution mechanics to be implemented in the future.
+    /// Optimistic oracle (Resolution mechanics to be implemented in the future.)
     Optimistic,
 }
 

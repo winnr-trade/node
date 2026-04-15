@@ -2,6 +2,7 @@ use crate::utils::{create_test_market, create_test_market_with_resolver, get_mar
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule, MarketStatus, ResolutionData, Resolver};
 use shared_types::Outcome;
+use sov_modules_api::HexHash;
 use sov_test_utils::{AsUser, TransactionTestCase};
 
 // ============================================================================
@@ -14,7 +15,7 @@ fn test_create_market_with_pyth_resolver() {
     let user = test_data.user;
     let collateral = test_data.collateral_token_id;
 
-    let feed_id = [0xAB; 32];
+    let feed_id = HexHash::new([0xAB; 32]);
     let resolver = Resolver::Pyth {
         feed_id,
         lower_bound: Some(1000),
@@ -42,7 +43,7 @@ fn test_create_market_with_pyth_resolver_unbounded() {
     let collateral = test_data.collateral_token_id;
 
     let resolver = Resolver::Pyth {
-        feed_id: [0x01; 32],
+        feed_id: HexHash::from([0x01; 32]),
         lower_bound: None,
         upper_bound: Some(50000),
     };
@@ -94,7 +95,7 @@ fn test_resolve_pyth_market_returns_not_implemented() {
         &mut runner,
         &user,
         Resolver::Pyth {
-            feed_id: [0xAB; 32],
+            feed_id: HexHash::from([0xAB; 32]),
             lower_bound: Some(1000),
             upper_bound: Some(2000),
         },
@@ -218,7 +219,7 @@ fn test_resolve_pyth_market_with_address_data_fails() {
         &mut runner,
         &user,
         Resolver::Pyth {
-            feed_id: [0xAB; 32],
+            feed_id: HexHash::from([0xAB; 32]),
             lower_bound: Some(1000),
             upper_bound: Some(2000),
         },
