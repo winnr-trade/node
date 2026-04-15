@@ -36,7 +36,16 @@ pub enum Resolver<S: Spec> {
     },
 
     /// Optimistic oracle (Resolution mechanics to be implemented in the future.)
-    Optimistic,
+    Optimistic {},
+}
+
+impl<S: Spec> core::fmt::Display for Resolver<S> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match serde_json::to_string(self) {
+            Ok(json) => f.write_str(&json),
+            Err(_) => write!(f, "{:?}", self),
+        }
+    }
 }
 
 /// A prediction market.

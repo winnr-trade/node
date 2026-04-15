@@ -70,7 +70,7 @@ fn test_create_market_with_optimistic_resolver() {
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
         &user,
-        Resolver::Optimistic,
+        Resolver::Optimistic {},
         "Will it snow in July?",
         collateral,
         86_400_000,
@@ -78,7 +78,7 @@ fn test_create_market_with_optimistic_resolver() {
 
     let market = get_market(&runner, market_id);
     assert_eq!(market.status, MarketStatus::Active);
-    assert_eq!(market.resolver, Resolver::Optimistic);
+    assert_eq!(market.resolver, Resolver::Optimistic {});
 }
 
 // ============================================================================
@@ -136,7 +136,7 @@ fn test_resolve_optimistic_market_returns_not_implemented() {
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
         &user,
-        Resolver::Optimistic,
+        Resolver::Optimistic {},
         "Will it snow in July?",
         collateral,
         100_000,

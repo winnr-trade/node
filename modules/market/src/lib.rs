@@ -256,7 +256,7 @@ impl<S: Spec> MarketModule<S> {
                 creator: ctx.sender().to_string(),
                 collateral_token: format!("{:?}", collateral_token),
                 resolution_time,
-                resolver: format!("{:?}", resolver),
+                resolver: resolver.to_string(),
             },
         );
 
@@ -515,7 +515,7 @@ impl<S: Spec> MarketModule<S> {
             (Resolver::Pyth { .. }, call::ResolutionData::Pyth { .. }) => {
                 return Err(MarketError::PythResolutionNotImplemented);
             }
-            (Resolver::Optimistic, _) => {
+            (Resolver::Optimistic {}, _) => {
                 return Err(MarketError::OptimisticResolutionNotImplemented);
             }
             // Mismatched resolver type and resolution data
