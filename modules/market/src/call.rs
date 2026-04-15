@@ -19,11 +19,10 @@ pub enum ResolutionData {
 }
 
 /// Call messages for the prediction market module.
+#[serialize(Borsh, Serde)]
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, UniversalWallet)]
 #[schemars(bound = "S: Spec", rename = "MarketCallMessage")]
-#[serialize(Borsh, Serde)]
-#[serde(rename_all = "snake_case")]
-#[serde(bound(serialize = "", deserialize = ""))]
+#[serde(rename_all = "snake_case", bound(serialize = "", deserialize = ""))]
 pub enum CallMessage<S: Spec> {
     /// Create a new prediction market.
     CreateMarket {
