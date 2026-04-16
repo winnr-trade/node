@@ -23,7 +23,7 @@ fn test_create_market_success() {
 
     // Verify all market properties are correctly set
     let market = get_market(&runner, market_id);
-    assert_eq!(market.id, MarketId(1));
+    assert_eq!(market.id, MarketId(0));
     assert_eq!(market.question.to_string(), "Will it rain tomorrow?");
     assert_eq!(market.creator, user.address());
     assert_eq!(market.collateral_token, collateral);
@@ -96,20 +96,20 @@ fn test_create_multiple_markets() {
     );
 
     // Verify each market has the correct id and distinct properties
-    let m1 = get_market(&runner, MarketId(1));
-    assert_eq!(m1.id, MarketId(1));
+    let m1 = get_market(&runner, MarketId(0));
+    assert_eq!(m1.id, MarketId(0));
     assert_eq!(m1.question.to_string(), "Will BTC hit 100k?");
     assert_eq!(m1.creator, user.address());
     assert_eq!(m1.resolver, Resolver::Address(user.address()));
 
-    let m2 = get_market(&runner, MarketId(2));
-    assert_eq!(m2.id, MarketId(2));
+    let m2 = get_market(&runner, MarketId(1));
+    assert_eq!(m2.id, MarketId(1));
     assert_eq!(m2.question.to_string(), "Will ETH hit 10k?");
     assert_eq!(m2.creator, admin.address());
     assert_eq!(m2.resolver, Resolver::Address(user.address()));
 
-    let m3 = get_market(&runner, MarketId(3));
-    assert_eq!(m3.id, MarketId(3));
+    let m3 = get_market(&runner, MarketId(2));
+    assert_eq!(m3.id, MarketId(2));
     assert_eq!(m3.question.to_string(), "Will SOL hit 1k?");
     assert_eq!(m3.creator, user.address());
     assert_eq!(m3.resolver, Resolver::Address(admin.address()));
