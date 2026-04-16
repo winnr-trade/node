@@ -38,8 +38,6 @@ use sov_modules_api::{
 };
 use tracing::info;
 
-const COLLATERAL_VAULT_ADDRESS: [u8; 32] = [1; 32];
-
 /// Market Module
 #[derive(Clone, ModuleInfo, ModuleRestApi)]
 pub struct MarketModule<S: Spec> {
@@ -435,7 +433,7 @@ impl<S: Spec> MarketModule<S> {
         // Transfer collateral back to user
         self.bank
             .transfer_from(
-                &S::Address::from(CredentialId::from_bytes(COLLATERAL_VAULT_ADDRESS)),
+                self.id.to_payable(),
                 ctx.sender(),
                 Coins {
                     amount: Amount(amount as u128),
@@ -619,7 +617,7 @@ impl<S: Spec> MarketModule<S> {
         // Transfer winnings
         self.bank
             .transfer_from(
-                &S::Address::from(CredentialId::from_bytes(COLLATERAL_VAULT_ADDRESS)),
+                self.id.to_payable(),
                 ctx.sender(),
                 Coins {
                     amount: Amount(payout as u128),
