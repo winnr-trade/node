@@ -7,7 +7,10 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
-use sov_modules_api::Spec;
+use sov_modules_api::{
+    macros::{serialize, UniversalWallet},
+    Spec,
+};
 
 // An order request from the user
 #[derive(
@@ -31,17 +34,9 @@ pub struct OrderRequest {
 }
 
 /// An order in the canonical YES-space book.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Order<S: Spec> {
     /// Unique order ID.
     pub id: OrderId,
