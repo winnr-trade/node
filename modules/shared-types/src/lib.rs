@@ -6,7 +6,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sov_modules_api::macros::UniversalWallet;
+use sov_modules_api::macros::{serialize, UniversalWallet};
 use std::str::FromStr;
 
 // ============================================================================
@@ -15,22 +15,9 @@ use std::str::FromStr;
 
 /// Unique identifier for a prediction market.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct MarketId(pub u64);
 
 impl core::fmt::Display for MarketId {
@@ -55,19 +42,8 @@ impl FromStr for MarketId {
 }
 
 /// Possible outcomes for a binary prediction market.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum Outcome {
     /// The predicted event occurred.
@@ -79,20 +55,8 @@ pub enum Outcome {
 }
 
 /// Current status of a market.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum MarketStatus {
     /// Market is open for trading.
@@ -110,22 +74,9 @@ pub enum MarketStatus {
 
 /// Unique identifier for an order.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct OrderId(pub u64);
 
 impl core::fmt::Display for OrderId {
@@ -157,22 +108,9 @@ impl FromStr for OrderId {
 ///
 /// Valid trading range is 1-9999 (0.01% to 99.99%).
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct Price(pub u64);
 
 impl Price {
@@ -237,20 +175,8 @@ impl FromStr for Price {
 }
 
 /// Which outcome side an order is for.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OutcomeSide {
     No,
@@ -267,20 +193,8 @@ impl OutcomeSide {
 }
 
 /// Order direction (buy or sell).
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum Side {
     /// Buying shares (willing to pay up to limit price).
@@ -299,20 +213,8 @@ impl Side {
 }
 
 /// Order type determining execution behavior.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderType {
     /// Standard limit order - rests on book if not filled.
@@ -329,20 +231,8 @@ pub enum OrderType {
 }
 
 /// Order status.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
     /// Order is active on the book.
