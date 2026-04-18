@@ -91,6 +91,8 @@ where
     pub orderbook: orderbook::OrderbookModule<S>,
     /// The Shielded Pool module, responsible for managing private transactions.
     pub shielded_pool: shielded_pool::ShieldedPoolModule<S>,
+    /// The Pyth oracle module, responsible for storing verified price updates.
+    pub pyth: pyth::PythModule<S>,
     /// The StateConsistency module, used for acceptance testing
     #[cfg(feature = "acceptance-testing")]
     pub state_consistency: sov_test_state_consistency::StateConsistency<S>,

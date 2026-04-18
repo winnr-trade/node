@@ -8821,6 +8821,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyth"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "shared-types",
+ "sov-address",
+ "sov-chain-state",
+ "sov-modules-api",
+ "sov-state",
+ "sov-test-utils",
+ "thiserror 2.0.16",
+ "tracing",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14562,6 +14582,7 @@ dependencies = [
  "jsonrpsee",
  "market",
  "orderbook",
+ "pyth",
  "serde",
  "shielded-pool",
  "sov-accounts",

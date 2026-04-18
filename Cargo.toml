@@ -16,7 +16,8 @@ members = [
   "modules/shared-types",
   "modules/orderbook",
   "modules/market", 
-  "modules/shielded-pool"
+  "modules/shielded-pool",
+  "modules/pyth"
 ]
 default-members = ["crates/rollup", "crates/utils/node-discovery"]
 
@@ -40,6 +41,7 @@ shared-types = { path = "modules/shared-types" }
 market = { path = "modules/market" }
 orderbook = { path = "modules/orderbook" }
 shielded-pool = { path = "modules/shielded-pool" }
+pyth = { path = "modules/pyth" }
 sov-address = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "e8f4eb439cba3fb1154a58ebe5a30cb963b95d05", features = [
   "evm",
 ] }
