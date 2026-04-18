@@ -1,3 +1,5 @@
+use sov_modules_api::{err_detail, ErrorContext, ErrorDetail};
+
 #[derive(Debug, thiserror::Error, serde::Serialize)]
 #[serde(tag = "error_code", rename_all = "snake_case")]
 pub enum PythError {
@@ -23,6 +25,14 @@ where
     S: serde::Serializer,
 {
     serializer.serialize_str(&err.to_string())
+}
+
+impl ErrorDetail for PythError {
+    fn error_detail(&self) -> Result<ErrorContext, Box<dyn std::error::Error + Send + Sync>> {
+        let mut detail = err_detail!(self);
+        detail.insert("message".to_owned(), self.to_string().into());
+        Ok(detail)
+    }
 }
 
 /// Extension trait to convert any error to PythError.

@@ -8836,6 +8836,7 @@ dependencies = [
  "sov-modules-api",
  "sov-state",
  "sov-test-utils",
+ "strum 0.26.3",
  "thiserror 2.0.16",
  "tracing",
 ]

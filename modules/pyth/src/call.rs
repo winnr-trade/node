@@ -1,6 +1,6 @@
 use crate::error::IntoPythError;
 use crate::types::{GuardianSet, PriceUpdate};
-use crate::{Event, PythError, PythModule};
+use crate::{Event, PriceFeedKey, PythError, PythModule};
 use schemars::JsonSchema;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
@@ -34,7 +34,7 @@ impl<S: Spec> PythModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), PythError> {
         for update in updates {
-            let key = crate::types::PriceFeedKey {
+            let key = PriceFeedKey {
                 feed_id: update.feed_id.clone(),
                 publish_time: update.publish_time,
             };
@@ -65,9 +65,11 @@ impl<S: Spec> PythModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), PythError> {
-        let admin = self.admin.get(state).into_pyth_err()?.ok_or_else(|| {
-            PythError::Any(anyhow::anyhow!("Admin not set"))
-        })?;
+        let admin = self
+            .admin
+            .get(state)
+            .into_pyth_err()?
+            .ok_or_else(|| PythError::Any(anyhow::anyhow!("Admin not set")))?;
 
         if *ctx.sender() != admin {
             return Err(PythError::Unauthorized {

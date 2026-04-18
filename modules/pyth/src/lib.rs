@@ -50,22 +50,6 @@ pub struct PythModule<S: Spec> {
     pub chain_state: sov_chain_state::ChainState<S>,
 }
 
-impl<S: Spec> PythModule<S> {
-    /// Look up a price update by feed ID and publish timestamp.
-    pub fn get_price(
-        &self,
-        feed_id: &HexHash,
-        publish_time: u64,
-        state: &mut impl TxState<S>,
-    ) -> Result<Option<PriceUpdate>, PythError> {
-        let key = PriceFeedKey {
-            feed_id: feed_id.clone(),
-            publish_time,
-        };
-        self.price_updates.get(&key, state).into_pyth_err()
-    }
-}
-
 impl<S: Spec> Module for PythModule<S> {
     type Spec = S;
     type Config = PythGenesisConfig<S>;
@@ -94,5 +78,21 @@ impl<S: Spec> Module for PythModule<S> {
                 self.set_guardian_set(keys, expiry, ctx, state)
             }
         }
+    }
+}
+
+impl<S: Spec> PythModule<S> {
+    /// Look up a price update by feed ID and publish timestamp.
+    pub fn get_price(
+        &self,
+        feed_id: &HexHash,
+        publish_time: u64,
+        state: &mut impl TxState<S>,
+    ) -> Result<Option<PriceUpdate>, PythError> {
+        let key = PriceFeedKey {
+            feed_id: feed_id.clone(),
+            publish_time,
+        };
+        self.price_updates.get(&key, state).into_pyth_err()
     }
 }
