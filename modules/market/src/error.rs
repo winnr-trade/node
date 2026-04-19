@@ -77,8 +77,8 @@ pub enum MarketError {
         actual: String,
     },
 
-    #[error("Pyth resolution is not yet implemented")]
-    PythResolutionNotImplemented,
+    #[error("Pyth price feed {feed_id} not found at publish_time {publish_time}")]
+    PythFeedNotFound { feed_id: String, publish_time: u64 },
 
     #[error("Optimistic oracle resolution is not yet implemented")]
     OptimisticResolutionNotImplemented,

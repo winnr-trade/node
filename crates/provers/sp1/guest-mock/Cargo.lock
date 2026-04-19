@@ -5071,6 +5071,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "borsh 1.5.7",
+ "pyth",
  "schemars 0.8.22",
  "serde",
  "serde_json",

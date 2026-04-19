@@ -79,6 +79,10 @@ pub struct MarketModule<S: Spec> {
     /// Chain state module for accessing chain information
     #[module]
     pub chain_state: sov_chain_state::ChainState<S>,
+
+    /// Pyth oracle module for price feed resolution
+    #[module]
+    pub pyth: pyth::PythModule<S>,
 }
 
 impl<S: Spec> Module for MarketModule<S> {
@@ -468,7 +472,7 @@ impl<S: Spec> MarketModule<S> {
     fn resolve_market(
         &mut self,
         market_id: MarketId,
-        data: call::ResolutionData,
+        data: ResolutionData,
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -499,19 +503,18 @@ impl<S: Spec> MarketModule<S> {
 
         // Dispatch based on resolver type
         let outcome = match (&market.resolver, &data) {
-            (Resolver::Address(resolver_addr), call::ResolutionData::Address { outcome }) => {
-                // Verify caller is the designated resolver
-                if *context.sender() != *resolver_addr {
-                    return Err(MarketError::UnauthorizedResolver {
-                        market_id,
-                        expected: resolver_addr.to_string(),
-                        actual: context.sender().to_string(),
-                    });
-                }
-                *outcome
+            (Resolver::Address(resolver_addr), ResolutionData::Address { outcome }) => {
+                self.resolve_by_address(market_id, resolver_addr, *outcome, context)?
             }
-            (Resolver::Pyth { .. }, call::ResolutionData::Pyth { .. }) => {
-                return Err(MarketError::PythResolutionNotImplemented);
+            (
+                Resolver::Pyth {
+                    feed_id,
+                    lower_bound,
+                    upper_bound,
+                },
+                ResolutionData::Pyth { publish_time },
+            ) => {
+                self.resolve_by_pyth(*feed_id, *lower_bound, *upper_bound, *publish_time, state)?
             }
             (Resolver::Optimistic {}, _) => {
                 return Err(MarketError::OptimisticResolutionNotImplemented);
@@ -549,6 +552,65 @@ impl<S: Spec> MarketModule<S> {
         );
 
         Ok(())
+    }
+
+    /// Resolve by designated address
+    fn resolve_by_address(
+        &self,
+        market_id: MarketId,
+        resolver_addr: &S::Address,
+        outcome: Outcome,
+        context: &Context<S>,
+    ) -> Result<Outcome, MarketError> {
+        if *context.sender() != *resolver_addr {
+            return Err(MarketError::UnauthorizedResolver {
+                market_id,
+                expected: resolver_addr.to_string(),
+                actual: context.sender().to_string(),
+            });
+        }
+        Ok(outcome)
+    }
+
+    /// Resolve by Pyth oracle price feed
+    fn resolve_by_pyth(
+        &self,
+        feed_id: sov_modules_api::HexHash,
+        lower_bound: Option<u64>,
+        upper_bound: Option<u64>,
+        publish_time: u64,
+        state: &mut impl TxState<S>,
+    ) -> Result<Outcome, MarketError> {
+        let key = pyth::PriceFeedKey {
+            feed_id,
+            publish_time,
+        };
+
+        let price_update = self
+            .pyth
+            .price_updates
+            .get(&key, state)
+            .into_market_err()?
+            .ok_or_else(|| MarketError::PythFeedNotFound {
+                feed_id: feed_id.to_string(),
+                publish_time,
+            })?;
+
+        let price = price_update.price;
+
+        // Negative price is always out of u64 bounds
+        if price < 0 {
+            return Ok(Outcome::No);
+        }
+
+        let price_u64 = price as u64;
+        let above_lower = lower_bound.map_or(true, |lb| price_u64 >= lb);
+        let below_upper = upper_bound.map_or(true, |ub| price_u64 <= ub);
+        if above_lower && below_upper {
+            Ok(Outcome::Yes)
+        } else {
+            Ok(Outcome::No)
+        }
     }
 
     /// Claim winnings from a resolved market

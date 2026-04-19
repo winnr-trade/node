@@ -14,8 +14,8 @@ use sov_modules_api::{SafeString, Spec};
 pub enum ResolutionData {
     /// Resolve by designated address: caller provides the outcome directly.
     Address { outcome: Outcome },
-    /// Resolve via Pyth oracle: caller provides the price update proof.
-    Pyth { price_update_data: Vec<u8> },
+    /// Resolve via Pyth oracle: caller provides the publish_time of a stored price update.
+    Pyth { publish_time: u64 },
 }
 
 /// Call messages for the prediction market module.
