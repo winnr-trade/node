@@ -6592,7 +6592,6 @@ dependencies = [
  "anyhow",
  "borsh 1.5.7",
  "byteorder",
- "hex",
  "pythnet-sdk",
  "schemars 0.8.22",
  "serde",

@@ -7,7 +7,7 @@ edition.workspace = true
 [dependencies]
 pythnet-sdk = "2.3.1"
 byteorder = "1.4.3"
-hex = { version = "0.4.3", features = ["serde"] }
+
 
 # Shared types
 shared-types = { workspace = true }
@@ -34,6 +34,7 @@ tracing = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
+hex = { version = "0.4.3", features = ["serde"] }
 sov-address = { workspace = true, features = ["evm"] }
 sov-test-utils = { workspace = true }
 strum = { workspace = true }

@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use pyth::{CallMessage, GuardianSet, PythGenesisConfig, PythModule, MAX_BYTES_PRICE_UPDATES};
+use pyth::{
+    CallMessage, GuardianSet, PriceUpdate, PythGenesisConfig, PythModule, MAX_BYTES_PRICE_UPDATES,
+};
 use sov_modules_api::{HexHash, SafeVec, Spec};
 use sov_test_utils::runtime::genesis::optimistic::HighLevelOptimisticGenesisConfig;
 use sov_test_utils::runtime::TestRunner;
@@ -65,10 +67,16 @@ pub fn test_update_data() -> SafeVec<u8, { MAX_BYTES_PRICE_UPDATES }> {
     SafeVec::try_from(bytes).unwrap()
 }
 
-/// The feed ID embedded in TEST_UPDATE_DATA.
-pub fn test_data_feed_id() -> HexHash {
-    HexHash::from_str("e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43").unwrap()
+pub fn test_price_update() -> PriceUpdate {
+    PriceUpdate {
+        feed_id: HexHash::from_str(
+            "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+        )
+        .unwrap(),
+        price: 7713314144433,
+        // conf: 100000000000,
+        conf: 2922144433,
+        expo: -8,
+        publish_time: 1776450157,
+    }
 }
-
-/// The publish_time embedded in TEST_UPDATE_DATA.
-pub const TEST_DATA_PUBLISH_TIME: u64 = 1776450157;

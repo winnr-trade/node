@@ -4,7 +4,7 @@ use super::*;
 fn test_update_price_feed_with_valid_data() {
     let (test_data, mut runner) = setup();
 
-    let feed_id = test_data_feed_id();
+    let expected = test_price_update();
 
     runner.execute_transaction(TransactionTestCase {
         input: test_data.user.create_plain_message::<RT, PythModule<S>>(
@@ -24,17 +24,15 @@ fn test_update_price_feed_with_valid_data() {
                 .price_updates
                 .get(
                     &pyth::PriceFeedKey {
-                        feed_id: feed_id.clone(),
-                        publish_time: TEST_DATA_PUBLISH_TIME,
+                        feed_id: expected.feed_id.clone(),
+                        publish_time: expected.publish_time,
                     },
                     state,
                 )
                 .unwrap()
                 .expect("price update should be stored");
 
-            assert_eq!(stored.price, 7713314144433);
-            assert_eq!(stored.expo, -8);
-            assert_eq!(stored.publish_time, TEST_DATA_PUBLISH_TIME);
+            assert_eq!(stored, expected);
         }),
     });
 }
@@ -55,7 +53,7 @@ fn test_resubmit_same_update_data() {
         }),
     });
 
-    let feed_id = test_data_feed_id();
+    let expected = test_price_update();
 
     // Second submission of the same data should also succeed (overwrite)
     runner.execute_transaction(TransactionTestCase {
@@ -72,14 +70,14 @@ fn test_resubmit_same_update_data() {
                 .price_updates
                 .get(
                     &pyth::PriceFeedKey {
-                        feed_id: feed_id.clone(),
-                        publish_time: TEST_DATA_PUBLISH_TIME,
+                        feed_id: expected.feed_id.clone(),
+                        publish_time: expected.publish_time,
                     },
                     state,
                 )
                 .unwrap()
                 .expect("price update should still exist after resubmission");
-            assert_eq!(stored.price, 7713314144433);
+            assert_eq!(stored, expected);
         }),
     });
 }
