@@ -15,6 +15,7 @@ pub mod types;
 mod query;
 
 pub use call::CallMessage;
+pub use call::MAX_BYTES_PRICE_UPDATES;
 pub use error::PythError;
 pub use event::Event;
 pub use genesis::PythGenesisConfig;
@@ -73,7 +74,10 @@ impl<S: Spec> Module for PythModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), Self::Error> {
         match msg {
-            CallMessage::UpdatePriceFeeds { updates } => self.update_price_feeds(updates, state),
+            CallMessage::UpdatePriceFeeds { update_data } => {
+                self.update_price_feeds(update_data, state)
+            }
+
             CallMessage::SetGuardianSet { keys, expiry } => {
                 self.set_guardian_set(keys, expiry, ctx, state)
             }

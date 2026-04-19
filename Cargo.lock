@@ -8,7 +8,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "borsh",
+ "borsh 1.5.7",
  "chrono",
  "clap",
  "futures",
@@ -1067,7 +1067,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 dependencies = [
- "borsh",
+ "borsh 1.5.7",
  "serde",
 ]
 
@@ -2103,13 +2103,36 @@ checksum = "3eeab4423108c5d7c744f4d234de88d18d636100093ae04caf4825134b9c3a32"
 
 [[package]]
 name = "borsh"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "115e54d64eb62cdebad391c19efc9dce4981c690c85a33a12199d99bb9546fee"
+dependencies = [
+ "borsh-derive 0.10.4",
+ "hashbrown 0.13.2",
+]
+
+[[package]]
+name = "borsh"
 version = "1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad8646f98db542e39fc66e68a20b2144f6a732636df7c2354e74645faaa433ce"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 1.5.7",
  "bytes",
  "cfg_aliases",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "831213f80d9423998dd696e2c5345aba6be7a0bd8cd19e31c5243e13df1cef89"
+dependencies = [
+ "borsh-derive-internal",
+ "borsh-schema-derive-internal",
+ "proc-macro-crate 0.1.5",
+ "proc-macro2",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2123,6 +2146,28 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+]
+
+[[package]]
+name = "borsh-derive-internal"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65d6ba50644c98714aa2a70d13d7df3cd75cd2b523a2b452bf010443800976b3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "276691d96f063427be83e6692b86148e488ebba9f48f77788724ca027ba3b6d4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2338,7 +2383,7 @@ dependencies = [
  "serde_json",
  "syn 2.0.106",
  "tempfile",
- "toml",
+ "toml 0.8.23",
 ]
 
 [[package]]
@@ -4292,6 +4337,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast-math"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2465292146cdfc2011350fe3b1c616ac83cf0faeedb33463ba1c332ed8948d66"
+dependencies = [
+ "ieee754",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5538,6 +5592,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ieee754"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9007da9cacbd3e6343da136e98b0d2df013f553d35bdec8b518f07bea768e19c"
+
+[[package]]
 name = "ignore"
 version = "0.4.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5792,7 +5852,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b37ade62ca224945201e0c6d65e7a389ada90217895f7aa281470212ce4dddb0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "digest 0.10.7",
  "hashbrown 0.13.2",
  "hex",
@@ -6516,7 +6576,7 @@ name = "market"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -6863,7 +6923,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d9149cb486570ac43944740ac8ea83d309d44d6a2cd2cd856606f43e40c6429"
 dependencies = [
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "serde",
  "sha2 0.10.9",
@@ -6911,7 +6971,7 @@ dependencies = [
  "ahash 0.8.12",
  "anyhow",
  "bitvec",
- "borsh",
+ "borsh 1.5.7",
  "cfg-if",
  "crossbeam",
  "crossbeam-channel",
@@ -6940,7 +7000,7 @@ checksum = "e86909b9e6666306bb3878401e8fc8afe4bcd99771acf30d94ad0bab1c1173f9"
 dependencies = [
  "arrayvec",
  "bitvec",
- "borsh",
+ "borsh 1.5.7",
  "digest 0.10.7",
  "hex",
  "ruint",
@@ -7449,7 +7509,7 @@ name = "orderbook"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "market",
  "schemars 0.8.22",
  "serde",
@@ -8420,6 +8480,15 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d6ea3c4595b96363c13943497db34af4460fb474a95c43f4446ad341b8c9785"
+dependencies = [
+ "toml 0.5.11",
+]
+
+[[package]]
+name = "proc-macro-crate"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
@@ -8825,7 +8894,10 @@ name = "pyth"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
+ "byteorder",
+ "hex",
+ "pythnet-sdk",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -8839,6 +8911,25 @@ dependencies = [
  "strum 0.26.3",
  "thiserror 2.0.16",
  "tracing",
+]
+
+[[package]]
+name = "pythnet-sdk"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "498d20fd330277697aaee92f341bdabdb4695b10e05f054157a18ad8b7746a17"
+dependencies = [
+ "bincode",
+ "borsh 0.10.4",
+ "bytemuck",
+ "byteorder",
+ "fast-math",
+ "hex",
+ "rustc_version 0.4.1",
+ "serde",
+ "sha3",
+ "slow_primes",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -9742,7 +9833,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f84c73972691d73955126d3d889c47e7f20900a69c74d775c9eab7c25d10b3d9"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 2.0.1",
  "elf",
  "lazy_static",
@@ -9986,7 +10077,7 @@ checksum = "355de69bdd62c99a48497fbf67501665a2eb9c4ed205549e7af3cdb83b40ef12"
 dependencies = [
  "anyhow",
  "blake2",
- "borsh",
+ "borsh 1.5.7",
  "bytemuck",
  "cfg-if",
  "digest 0.10.7",
@@ -10018,7 +10109,7 @@ dependencies = [
  "addr2line 0.22.0",
  "anyhow",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "bytemuck",
  "bytes",
  "derive_more 2.0.1",
@@ -10171,7 +10262,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum 0.7.9",
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "clap",
  "futures",
@@ -10643,7 +10734,7 @@ dependencies = [
  "strum 0.26.3",
  "tempfile",
  "thiserror 2.0.16",
- "toml",
+ "toml 0.8.23",
  "yaml-rust2",
 ]
 
@@ -11318,7 +11409,7 @@ name = "shared-types"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-modules-api",
@@ -11333,7 +11424,7 @@ dependencies = [
  "ark-circom",
  "ark-ff 0.5.0",
  "ark-groth16",
- "borsh",
+ "borsh 1.5.7",
  "light-poseidon",
  "schemars 0.8.22",
  "serde",
@@ -11860,6 +11951,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slow_primes"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58267dd2fbaa6dceecba9e3e106d2d90a2b02497c0e8b01b8759beccf5113938"
+dependencies = [
+ "num",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11932,7 +12032,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "arbitrary",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "serde_with",
@@ -11948,7 +12048,7 @@ dependencies = [
  "alloy-primitives",
  "anyhow",
  "arbitrary",
- "borsh",
+ "borsh 1.5.7",
  "hex",
  "k256",
  "proptest",
@@ -11969,7 +12069,7 @@ dependencies = [
  "anyhow",
  "backon",
  "base64 0.22.1",
- "borsh",
+ "borsh 1.5.7",
  "chrono",
  "futures",
  "openapiv3",
@@ -11991,7 +12091,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "schemars 0.8.22",
  "serde",
@@ -12012,7 +12112,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "proptest",
  "schemars 0.8.22",
@@ -12034,7 +12134,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "futures",
  "rockbound",
@@ -12055,7 +12155,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "hex",
  "schemars 0.8.22",
@@ -12075,7 +12175,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "serde",
  "serde_json",
  "sov-modules-api",
@@ -12110,7 +12210,7 @@ dependencies = [
  "async-trait",
  "backon",
  "bech32",
- "borsh",
+ "borsh 1.5.7",
  "celestia-client",
  "celestia-types",
  "derive_more 1.0.0",
@@ -12140,7 +12240,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-modules-api",
@@ -12156,7 +12256,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "directories 5.0.1",
  "futures",
@@ -12182,7 +12282,7 @@ dependencies = [
  "arbitrary",
  "async-trait",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "byteorder",
  "derivative",
  "digest 0.10.7",
@@ -12215,7 +12315,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "arbitrary",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "digest 0.10.7",
  "hex",
@@ -12233,7 +12333,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "jsonrpsee",
  "serde",
@@ -12267,7 +12367,7 @@ dependencies = [
  "alloy-eips",
  "alloy-primitives",
  "alloy-rpc-types",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "hex",
  "jsonrpsee",
@@ -12298,7 +12398,7 @@ dependencies = [
  "alloy-rpc-types",
  "alloy-rpc-types-trace",
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "derive-new",
  "derive_more 1.0.0",
@@ -12341,7 +12441,7 @@ dependencies = [
  "serde",
  "sov-db",
  "sov-rollup-interface",
- "toml",
+ "toml 0.8.23",
  "tracing",
 ]
 
@@ -12351,7 +12451,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "k256",
  "ruint",
@@ -12390,7 +12490,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "axum 0.7.9",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "futures",
  "hex",
@@ -12440,7 +12540,7 @@ dependencies = [
  "arbitrary",
  "async-trait",
  "axum 0.7.9",
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "chrono",
  "clap",
@@ -12472,7 +12572,7 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "digest 0.10.7",
  "ed25519-dalek",
  "hex",
@@ -12494,7 +12594,7 @@ dependencies = [
  "async-trait",
  "axum 0.7.9",
  "bech32",
- "borsh",
+ "borsh 1.5.7",
  "bs58",
  "clap",
  "concread",
@@ -12523,7 +12623,7 @@ dependencies = [
  "strum 0.26.3",
  "thiserror 1.0.69",
  "tokio",
- "toml",
+ "toml 0.8.23",
  "tracing",
  "tracing-test",
  "unwrap-infallible",
@@ -12550,7 +12650,7 @@ dependencies = [
  "sov-metrics",
  "sov-universal-wallet-macro-helpers",
  "syn 2.0.106",
- "toml",
+ "toml 0.8.23",
 ]
 
 [[package]]
@@ -12560,7 +12660,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "async-trait",
- "borsh",
+ "borsh 1.5.7",
  "console-subscriber",
  "derivative",
  "futures",
@@ -12599,7 +12699,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "axum 0.7.9",
- "borsh",
+ "borsh 1.5.7",
  "hex",
  "jsonrpsee",
  "schemars 0.8.22",
@@ -12638,7 +12738,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "schemars 0.8.22",
  "serde",
@@ -12658,7 +12758,7 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bcs",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "derive_more 1.0.0",
  "proptest",
@@ -12678,7 +12778,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "derive_more 1.0.0",
  "schemars 0.8.22",
  "serde",
@@ -12733,7 +12833,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-bank",
@@ -12750,7 +12850,7 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "bytemuck",
  "digest 0.10.7",
  "ed25519-dalek",
@@ -12778,7 +12878,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "axum 0.7.9",
  "base64 0.22.1",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "derive_more 1.0.0",
  "hex",
@@ -12807,7 +12907,7 @@ dependencies = [
  "arbitrary",
  "async-trait",
  "backon",
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "derive_more 1.0.0",
  "digest 0.10.7",
@@ -12861,7 +12961,7 @@ dependencies = [
  "backon",
  "base64 0.22.1",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "dashmap 6.1.0",
  "derivative",
  "derive_more 1.0.0",
@@ -12907,7 +13007,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "arbitrary",
- "borsh",
+ "borsh 1.5.7",
  "proptest",
  "proptest-derive 0.5.1",
  "schemars 0.8.22",
@@ -12925,7 +13025,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "clap",
  "rand 0.8.5",
  "schemars 0.8.22",
@@ -12949,7 +13049,7 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "ed25519-consensus",
  "hex",
  "proptest",
@@ -12973,7 +13073,7 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bcs",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "derive_more 1.0.0",
  "hex",
@@ -13003,7 +13103,7 @@ dependencies = [
  "axum 0.7.9",
  "backon",
  "bincode",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "futures",
  "futures-util",
@@ -13033,7 +13133,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "schemars 0.8.22",
@@ -13051,7 +13151,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "chrono",
  "derivative",
  "hex",
@@ -13070,7 +13170,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "hex",
  "schemars 0.8.22",
  "serde",
@@ -13087,7 +13187,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum-server",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "derive_more 1.0.0",
  "jsonschema",
@@ -13146,7 +13246,7 @@ source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439c
 dependencies = [
  "anyhow",
  "backon",
- "borsh",
+ "borsh 1.5.7",
  "derivative",
  "derive_more 1.0.0",
  "hex",
@@ -13178,7 +13278,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-modules-api",
@@ -13194,7 +13294,7 @@ dependencies = [
  "alloy-primitives",
  "arrayvec",
  "bech32",
- "borsh",
+ "borsh 1.5.7",
  "bs58",
  "hex",
  "nmt-rs",
@@ -13213,7 +13313,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "bech32",
- "borsh",
+ "borsh 1.5.7",
  "bs58",
  "convert_case 0.6.0",
  "darling 0.20.11",
@@ -13240,7 +13340,7 @@ version = "0.3.0"
 source = "git+https://github.com/Sovereign-Labs/sovereign-sdk.git?rev=e8f4eb439cba3fb1154a58ebe5a30cb963b95d05#e8f4eb439cba3fb1154a58ebe5a30cb963b95d05"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-modules-api",
@@ -14547,7 +14647,7 @@ name = "stf-starter"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "serde_json",
  "sov-address",
  "sov-bank",
@@ -14578,7 +14678,7 @@ name = "stf-starter-declaration"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "clap",
  "jsonrpsee",
  "market",
@@ -15296,6 +15396,15 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "toml"
+version = "0.5.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -16230,7 +16339,7 @@ name = "value-setter"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "borsh",
+ "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
  "sov-address",
@@ -16661,7 +16770,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror 1.0.69",
- "toml",
+ "toml 0.8.23",
  "url",
 ]
 
@@ -16683,7 +16792,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror 1.0.69",
- "toml",
+ "toml 0.8.23",
  "url",
 ]
 
@@ -16824,7 +16933,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
- "toml",
+ "toml 0.8.23",
  "tracing",
  "url",
  "urlencoding",
@@ -16962,7 +17071,7 @@ dependencies = [
  "tar",
  "tempfile",
  "thiserror 1.0.69",
- "toml",
+ "toml 0.8.23",
  "url",
  "wasmer-config 0.8.0",
 ]

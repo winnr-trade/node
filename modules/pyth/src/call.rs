@@ -1,9 +1,14 @@
 use crate::error::IntoPythError;
 use crate::types::{GuardianSet, PriceUpdate};
 use crate::{Event, PriceFeedKey, PythError, PythModule};
+use pythnet_sdk::messages::Message;
+use pythnet_sdk::wire::from_slice;
+use pythnet_sdk::wire::v1::{AccumulatorUpdateData, Proof};
 use schemars::JsonSchema;
 use sov_modules_api::macros::{serialize, UniversalWallet};
-use sov_modules_api::{Context, EventEmitter, Spec, TxState};
+use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
+
+pub const MAX_BYTES_PRICE_UPDATES: usize = 5244;
 
 /// Call messages for the Pyth module.
 #[serialize(Borsh, Serde)]
@@ -15,7 +20,8 @@ pub enum CallMessage {
     /// Permissionless — anyone can call this with valid price data.
     UpdatePriceFeeds {
         /// Each entry is a price update to store.
-        updates: Vec<PriceUpdate>,
+        // updates: Vec<PriceUpdate>,
+        update_data: SafeVec<u8, MAX_BYTES_PRICE_UPDATES>,
     },
 
     /// Update the Wormhole guardian set (admin only).
@@ -30,27 +36,56 @@ pub enum CallMessage {
 impl<S: Spec> PythModule<S> {
     pub(crate) fn update_price_feeds(
         &mut self,
-        updates: Vec<PriceUpdate>,
+        update_data: SafeVec<u8, MAX_BYTES_PRICE_UPDATES>,
         state: &mut impl TxState<S>,
     ) -> Result<(), PythError> {
+        let res = AccumulatorUpdateData::try_from_slice(&update_data)
+            .ok()
+            .unwrap();
+
+        // @todo - verify the VAA signatures using the guardian set
+        let Proof::WormholeMerkle { vaa: _, updates } = res.proof;
+
         for update in updates {
+            let msg: Message =
+                from_slice::<byteorder::BigEndian, _>(update.message.as_ref()).unwrap();
+
+            let price_feed_msg = if let Message::PriceFeedMessage(msg) = msg {
+                msg
+            } else {
+                return Err(PythError::InvalidUpdateData {
+                    reason: "Unsupported message type".to_string(),
+                });
+            };
+
+            let feed_id = HexHash::from(price_feed_msg.feed_id);
+            let publish_time = price_feed_msg.publish_time as u64;
+
             let key = PriceFeedKey {
-                feed_id: update.feed_id.clone(),
-                publish_time: update.publish_time,
+                feed_id,
+                publish_time,
+            };
+
+            let price_update = PriceUpdate {
+                feed_id,
+                price: price_feed_msg.price,
+                conf: price_feed_msg.conf,
+                expo: price_feed_msg.exponent,
+                publish_time,
             };
 
             self.price_updates
-                .set(&key, &update, state)
+                .set(&key, &price_update, state)
                 .into_pyth_err()?;
 
             self.emit_event(
                 state,
                 Event::PriceUpdated {
-                    feed_id: format!("{}", update.feed_id),
-                    price: update.price,
-                    conf: update.conf,
-                    expo: update.expo,
-                    publish_time: update.publish_time,
+                    feed_id: format!("{}", price_update.feed_id),
+                    price: price_update.price,
+                    conf: price_update.conf,
+                    expo: price_update.expo,
+                    publish_time: price_update.publish_time,
                 },
             );
         }
