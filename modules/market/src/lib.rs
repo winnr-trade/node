@@ -150,27 +150,3 @@ impl<S: Spec> Module for MarketModule<S> {
         }
     }
 }
-
-impl<S: Spec> MarketModule<S> {
-    /// Get a market and verify it's active
-    pub(crate) fn get_active_market(
-        &self,
-        market_id: MarketId,
-        state: &mut impl TxState<S>,
-    ) -> Result<Market<S>, MarketError> {
-        let market = self
-            .markets
-            .get(&market_id, state)
-            .into_market_err()?
-            .ok_or(MarketError::MarketNotFound { market_id })?;
-
-        if market.status() != MarketStatus::Active {
-            return Err(MarketError::MarketNotActive {
-                market_id,
-                status: market.status(),
-            });
-        }
-
-        Ok(market)
-    }
-}

@@ -1,6 +1,6 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
-use crate::{Event, MarketError, MarketModule, Position, PositionKey};
-use shared_types::MarketId;
+use crate::{Event, Market, MarketError, MarketModule, PositionKey};
+use shared_types::{MarketId, MarketStatus};
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
@@ -206,5 +206,27 @@ impl<S: Spec> MarketModule<S> {
         );
 
         Ok(())
+    }
+
+    /// Get a market and verify it's active
+    fn get_active_market(
+        &self,
+        market_id: MarketId,
+        state: &mut impl TxState<S>,
+    ) -> Result<Market<S>, MarketError> {
+        let market = self
+            .markets
+            .get(&market_id, state)
+            .into_market_err()?
+            .ok_or(MarketError::MarketNotFound { market_id })?;
+
+        if market.status() != MarketStatus::Active {
+            return Err(MarketError::MarketNotActive {
+                market_id,
+                status: market.status(),
+            });
+        }
+
+        Ok(market)
     }
 }
