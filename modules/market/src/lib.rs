@@ -31,7 +31,6 @@ pub use types::*;
 // Re-export shared types for convenience
 pub use shared_types::{MarketId, MarketStatus, Outcome};
 
-use crate::error::IntoMarketError;
 use sov_bank::TokenId;
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
