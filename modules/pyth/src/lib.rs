@@ -21,10 +21,10 @@ pub use event::Event;
 pub use genesis::PythGenesisConfig;
 pub use types::{GuardianSet, PriceFeedKey, PriceUpdate};
 
-use crate::error::IntoPythError;
+use sov_chain_state::ChainState;
 use sov_modules_api::{
-    Context, GenesisState, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap,
-    StateValue, TxState,
+    Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
+    TxState,
 };
 
 /// Pyth Oracle Module
@@ -48,7 +48,7 @@ pub struct PythModule<S: Spec> {
 
     /// Chain state module for accessing chain information
     #[module]
-    pub chain_state: sov_chain_state::ChainState<S>,
+    pub chain_state: ChainState<S>,
 }
 
 impl<S: Spec> Module for PythModule<S> {
