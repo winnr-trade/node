@@ -35,6 +35,7 @@ pub use types::*;
 // Re-export shared types
 pub use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
 
+use agent_wallet::AgentWalletModule;
 use market::MarketModule;
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
@@ -113,6 +114,10 @@ pub struct OrderbookModule<S: Spec> {
     /// Shielded pool module for stealth orders
     #[module]
     pub shielded_pool: ShieldedPoolModule<S>,
+
+    /// Agent Wallet module for resolving delegated trading principals.
+    #[module]
+    pub agent_wallet: AgentWalletModule<S>,
 }
 
 impl<S: Spec> Module for OrderbookModule<S> {

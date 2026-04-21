@@ -2,6 +2,7 @@ use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
 use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
+use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
 use shielded_pool::Proof;
@@ -16,7 +17,11 @@ impl<S: Spec> OrderbookModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        self.place_order(order_request, ctx.sender(), state)
+        let owner = self
+            .agent_wallet
+            .resolve_principal_or_self(ctx.sender(), SCOPE_PLACE_ORDER, state)
+            .into_orderbook_err()?;
+        self.place_order(order_request, &owner, state)
     }
 
     pub(crate) fn place_order_stealth(
@@ -55,7 +60,10 @@ impl<S: Spec> OrderbookModule<S> {
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        let sender = context.sender();
+        let sender = self
+            .agent_wallet
+            .resolve_principal_or_self(context.sender(), SCOPE_CANCEL_ORDER, state)
+            .into_orderbook_err()?;
 
         let mut order = self
             .orders
@@ -64,7 +72,7 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::OrderNotFound { order_id })?;
 
         // Verify ownership
-        if order.owner != *sender {
+        if order.owner != sender {
             return Err(OrderbookError::NotOrderOwner {
                 order_id,
                 owner: order.owner.to_string(),
@@ -131,9 +139,14 @@ impl<S: Spec> OrderbookModule<S> {
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
+        let owner = self
+            .agent_wallet
+            .resolve_principal_or_self(context.sender(), SCOPE_CANCEL_ALL_ORDERS, state)
+            .into_orderbook_err()?;
+
         let order_ids = self
             .user_orders
-            .get(context.sender(), state)
+            .get(&owner, state)
             .into_orderbook_err()?
             .unwrap_or_default();
 

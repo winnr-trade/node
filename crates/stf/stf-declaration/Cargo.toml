@@ -38,6 +38,7 @@ market = { workspace = true }
 orderbook = { workspace = true }
 shielded-pool= { workspace = true }
 pyth = { workspace = true }
+agent-wallet = { workspace = true }
 strum = { workspace = true }
 
 anyhow = { workspace = true }

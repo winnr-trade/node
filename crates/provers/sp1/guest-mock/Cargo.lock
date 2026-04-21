@@ -29,6 +29,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "agent-wallet"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "borsh 1.5.7",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "sov-chain-state",
+ "sov-modules-api",
+ "sov-state",
+ "thiserror 2.0.17",
+ "tracing",
+]
+
+[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5743,6 +5759,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 name = "orderbook"
 version = "0.3.0"
 dependencies = [
+ "agent-wallet",
  "anyhow",
  "borsh 1.5.7",
  "market",
@@ -9662,6 +9679,7 @@ dependencies = [
 name = "stf-starter-declaration"
 version = "0.3.0"
 dependencies = [
+ "agent-wallet",
  "anyhow",
  "borsh 1.5.7",
  "market",

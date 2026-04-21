@@ -17,7 +17,8 @@ members = [
   "modules/orderbook",
   "modules/market", 
   "modules/shielded-pool",
-  "modules/pyth"
+  "modules/pyth",
+  "modules/agent-wallet"
 ]
 default-members = ["crates/rollup", "crates/utils/node-discovery"]
 
@@ -38,6 +39,7 @@ rust-version = "1.94.0"
 
 [workspace.dependencies]
 shared-types = { path = "modules/shared-types" }
+agent-wallet = { path = "modules/agent-wallet" }
 market = { path = "modules/market" }
 orderbook = { path = "modules/orderbook" }
 shielded-pool = { path = "modules/shielded-pool" }

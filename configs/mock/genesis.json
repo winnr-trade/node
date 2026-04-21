@@ -108,6 +108,7 @@
       "expiry": 0
     }
   },
+  "agent_wallet": {},
   "evm": {
     "accounts": [],
     "contract_creation_policy": "everyone",

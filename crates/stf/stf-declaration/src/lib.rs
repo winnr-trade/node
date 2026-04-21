@@ -93,6 +93,8 @@ where
     pub shielded_pool: shielded_pool::ShieldedPoolModule<S>,
     /// The Pyth oracle module, responsible for storing verified price updates.
     pub pyth: pyth::PythModule<S>,
+    /// The Agent Wallet module, responsible for scoped agent delegation.
+    pub agent_wallet: agent_wallet::AgentWalletModule<S>,
     /// The StateConsistency module, used for acceptance testing
     #[cfg(feature = "acceptance-testing")]
     pub state_consistency: sov_test_state_consistency::StateConsistency<S>,
