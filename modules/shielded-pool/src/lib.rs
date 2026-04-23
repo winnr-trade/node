@@ -23,8 +23,9 @@ pub use call::{CallMessage, Proof};
 pub use error::ShieldedPoolError;
 pub use event::ShieldedPoolEvent;
 pub use genesis::ShieldedPoolGenesisConfig;
+pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
 
-use crate::{error::IntoShieldedPoolError, hash::poseidon_t4, tree::IncrementalMerkleTree};
+use crate::{error::IntoShieldedPoolError, hash::poseidon_t4};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{

@@ -3,7 +3,7 @@ use ark_ff::{BigInteger, PrimeField};
 use light_poseidon::{Poseidon, PoseidonHasher};
 
 pub fn poseidon_t3(a: &[u8; 32], b: &[u8; 32]) -> [u8; 32] {
-    let mut poseidon = Poseidon::<Fr>::new_circom(3).unwrap();
+    let mut poseidon = Poseidon::<Fr>::new_circom(2).unwrap();
 
     let x = Fr::from_be_bytes_mod_order(a);
     let y = Fr::from_be_bytes_mod_order(b);
