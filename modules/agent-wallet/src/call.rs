@@ -12,8 +12,10 @@ use sov_modules_api::{
 pub enum CallMessage<S: Spec> {
     /// Register an agent wallet with the given scopes and optional expiry.
     ///
-    /// `ctx.sender()` is the owner. Replaces any existing delegation for this
-    /// (owner, agent) pair.
+    /// Owner authorization happens via an off-chain signature over a canonical
+    /// human-readable message generated from these fields.
+    /// This enables relayed transactions where `ctx.sender()` can be different
+    /// from the owner.
     RegisterAgent {
         /// The agent's address (ed25519 public key, Base58-encoded).
         agent: S::Address,
@@ -21,6 +23,12 @@ pub enum CallMessage<S: Spec> {
         scopes: u32,
         /// Expiry in milliseconds since epoch. Use `0` for no expiry.
         expires_at: u64,
+        /// Monotonic nonce for replay protection. Expected sequence starts at 0.
+        nonce: u64,
+        /// Owner public key bytes corresponding to the signing key.
+        owner_pub_key: Vec<u8>,
+        /// Signature bytes over the canonical human-readable registration message.
+        signature: Vec<u8>,
     },
 
     /// Revoke an agent wallet delegation.

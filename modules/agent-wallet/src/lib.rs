@@ -29,8 +29,8 @@ pub use types::{
 
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    Context, EventEmitter, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec,
-    StateMap, TxState,
+    Context, CryptoSpec, EventEmitter, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi,
+    PublicKey, Signature, Spec, StateMap, TxState,
 };
 
 /// Agent Wallet Module — scoped delegation of trading permissions.
@@ -49,6 +49,10 @@ pub struct AgentWalletModule<S: Spec> {
     /// Enables O(1) owner lookup in `resolve_principal` without scanning.
     #[state]
     pub agent_to_owner: StateMap<S::Address, S::Address>,
+
+    /// Next expected registration nonce per owner.
+    #[state]
+    pub owner_nonces: StateMap<S::Address, u64>,
 
     /// Chain state for reading the current block time (expiry checks).
     #[module]
@@ -82,7 +86,18 @@ impl<S: Spec> Module for AgentWalletModule<S> {
                 agent,
                 scopes,
                 expires_at,
-            } => self.register_agent(agent, scopes, expires_at, ctx, state),
+                nonce,
+                owner_pub_key,
+                signature,
+            } => self.register_agent(
+                agent,
+                scopes,
+                expires_at,
+                nonce,
+                owner_pub_key,
+                signature,
+                state,
+            ),
 
             CallMessage::RevokeAgent { agent } => self.revoke_agent(agent, ctx, state),
         }
@@ -94,21 +109,74 @@ impl<S: Spec> Module for AgentWalletModule<S> {
 // ============================================================================
 
 impl<S: Spec> AgentWalletModule<S> {
+    /// Build the canonical human-readable message that must be signed by the
+    /// owner for `RegisterAgent`.
+    pub fn registration_signing_message(
+        owner: &S::Address,
+        agent: &S::Address,
+        scopes: u32,
+        expires_at: u64,
+        nonce: u64,
+    ) -> String {
+        format!(
+            "WINNR Agent Wallet Registration\nowner: {owner}\nagent: {agent}\nscopes: 0x{scopes:08x}\nexpires_at: {expires_at}\nnonce: {nonce}\nversion: 1"
+        )
+    }
+
+    fn registration_signing_bytes(
+        owner: &S::Address,
+        agent: &S::Address,
+        scopes: u32,
+        expires_at: u64,
+        nonce: u64,
+    ) -> Result<Vec<u8>, AgentWalletError> {
+        Ok(
+            Self::registration_signing_message(owner, agent, scopes, expires_at, nonce)
+                .into_bytes(),
+        )
+    }
+
     /// Register (or replace) an agent delegation.
-    ///
-    /// `ctx.sender()` is the owner.
     fn register_agent(
         &mut self,
         agent: S::Address,
         scopes: u32,
         expires_at: u64,
-        ctx: &Context<S>,
+        nonce: u64,
+        owner_pub_key: Vec<u8>,
+        signature: Vec<u8>,
         state: &mut impl TxState<S>,
     ) -> Result<(), AgentWalletError> {
-        let owner = ctx.sender();
+        let owner_pub_key =
+            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner_pub_key)
+                .map_err(|_| AgentWalletError::InvalidPublicKey)?;
+
+        let owner: S::Address = owner_pub_key.credential_id().into();
+
+        let signature = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature)
+            .map_err(|_| AgentWalletError::InvalidSignatureBytes)?;
+
+        let signing_bytes =
+            Self::registration_signing_bytes(&owner, &agent, scopes, expires_at, nonce)?;
+        signature
+            .verify(&owner_pub_key, &signing_bytes)
+            .map_err(|_| AgentWalletError::InvalidSignature)?;
+
+        let expected_nonce = self
+            .owner_nonces
+            .get(&owner, state)
+            .into_agent_wallet_err()?
+            .unwrap_or(0);
+
+        if nonce != expected_nonce {
+            return Err(AgentWalletError::InvalidNonce {
+                expected: expected_nonce,
+                got: nonce,
+            });
+        }
 
         // Validate: agent must differ from owner.
-        if *owner == agent {
+        if owner == agent {
             return Err(AgentWalletError::AgentCannotBeOwner);
         }
 
@@ -140,7 +208,14 @@ impl<S: Spec> AgentWalletModule<S> {
             .into_agent_wallet_err()?;
 
         self.agent_to_owner
-            .set(&agent, owner, state)
+            .set(&agent, &owner, state)
+            .into_agent_wallet_err()?;
+
+        let next_nonce = expected_nonce
+            .checked_add(1)
+            .ok_or(AgentWalletError::NonceOverflow)?;
+        self.owner_nonces
+            .set(&owner, &next_nonce, state)
             .into_agent_wallet_err()?;
 
         self.emit_event(

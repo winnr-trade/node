@@ -21,6 +21,21 @@ pub enum AgentWalletError {
     #[error("Invalid expiry: expires_at must be 0 (no expiry) or a future timestamp")]
     InvalidExpiry,
 
+    #[error("Invalid owner signature")]
+    InvalidSignature,
+
+    #[error("Invalid owner public key bytes")]
+    InvalidPublicKey,
+
+    #[error("Invalid signature bytes")]
+    InvalidSignatureBytes,
+
+    #[error("Invalid nonce: expected {expected}, got {got}")]
+    InvalidNonce { expected: u64, got: u64 },
+
+    #[error("Nonce overflow for owner")]
+    NonceOverflow,
+
     #[error("Agent address must differ from owner address")]
     AgentCannotBeOwner,
 
