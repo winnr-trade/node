@@ -4,7 +4,7 @@ use crate::{
     SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, Price, Side};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -20,11 +20,19 @@ impl<S: Spec> OrderbookModule<S> {
         price: Price,
         quantity: u64,
         taker: &S::Address,
+        order_type: OrderType,
         state: &mut impl TxState<S>,
     ) -> Result<MatchResult, OrderbookError> {
         let opposite_side = side.opposite();
+
+        // Market orders match at any price; limit orders match up to their limit price
+        let limit_price = match order_type {
+            OrderType::Market => None,
+            _ => Some(price),
+        };
+
         let price_levels =
-            self.get_matchable_price_levels(market_id, opposite_side, price, side, state)?;
+            self.get_matchable_price_levels(market_id, opposite_side, limit_price, side, state)?;
 
         let config = self
             .config
@@ -178,11 +186,13 @@ impl<S: Spec> OrderbookModule<S> {
     /// Get matchable price levels on the opposite side.
     ///
     /// Returns levels in matching order (best price first).
+    /// If `limit_price` is None (market order), includes all levels.
+    /// If `limit_price` is Some, filters to levels within the limit.
     fn get_matchable_price_levels(
         &self,
         market_id: MarketId,
         book_side: Side,
-        limit_price: Price,
+        limit_price: Option<Price>,
         incoming_side: Side,
         state: &mut impl TxState<S>,
     ) -> Result<Vec<Price>, OrderbookError> {
@@ -196,10 +206,13 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .unwrap_or_default();
 
-        levels.retain(|&p| match incoming_side {
-            Side::Bid => p <= limit_price,
-            Side::Ask => p >= limit_price,
-        });
+        // Filter by limit price only if specified (not a market order)
+        if let Some(limit_price) = limit_price {
+            levels.retain(|&p| match incoming_side {
+                Side::Bid => p <= limit_price,
+                Side::Ask => p >= limit_price,
+            });
+        }
 
         match book_side {
             Side::Ask => levels.sort(),

@@ -207,6 +207,7 @@ impl<S: Spec> OrderbookModule<S> {
             canonical_order.price,
             quantity,
             sender,
+            order_type,
             state,
         )?;
 
