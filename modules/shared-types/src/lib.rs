@@ -3,11 +3,12 @@
 //! This crate contains common types used across multiple modules
 //! to avoid circular dependencies.
 
-use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sov_modules_api::macros::{serialize, UniversalWallet};
-use std::str::FromStr;
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
 
 // ============================================================================
 // MARKET TYPES
@@ -20,7 +21,7 @@ use std::str::FromStr;
 #[serialize(Borsh, Serde)]
 pub struct MarketId(pub u64);
 
-impl core::fmt::Display for MarketId {
+impl Display for MarketId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Market({})", self.0)
     }
@@ -159,8 +160,8 @@ impl Price {
     }
 }
 
-impl core::fmt::Display for Price {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl Display for Price {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:.2}%", self.0 as f64 / 100.0)
     }
 }

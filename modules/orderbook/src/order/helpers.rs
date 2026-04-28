@@ -1,6 +1,6 @@
 use crate::error::IntoOrderbookError;
 use crate::order::canonical::CanonicalOrder;
-use crate::{MarketSideKey, OrderRequest, OrderbookError, OrderbookModule};
+use crate::{OrderRequest, OrderbookError, OrderbookModule};
 use market::{MarketId, MarketStatus};
 use shared_types::{OrderId, OrderType, Price, Side};
 use sov_modules_api::{Spec, TxState};
