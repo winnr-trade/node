@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
-    Spec,
+    HexString, Spec,
 };
 
 /// Call messages for the agent-wallet module.
@@ -17,7 +17,7 @@ pub enum CallMessage<S: Spec> {
     /// This enables relayed transactions where `ctx.sender()` can be different
     /// from the owner.
     RegisterAgent {
-        /// The agent's address (ed25519 public key, Base58-encoded).
+        /// The agent's address
         agent: S::Address,
         /// Bitmask of allowed scopes (see `SCOPE_*` constants in `types`).
         scopes: u32,
@@ -25,10 +25,10 @@ pub enum CallMessage<S: Spec> {
         expires_at: u64,
         /// Monotonic nonce for replay protection. Expected sequence starts at 0.
         nonce: u64,
-        /// Owner public key bytes corresponding to the signing key.
-        owner_pub_key: Vec<u8>,
+        /// Owner address
+        owner: S::Address,
         /// Signature bytes over the canonical human-readable registration message.
-        signature: Vec<u8>,
+        signature: HexString<[u8; 64]>,
     },
 
     /// Revoke an agent wallet delegation.

@@ -11,13 +11,13 @@ use std::str::FromStr;
 // ============================================================================
 
 /// Bitmask flag: agent may place orders.
-pub const SCOPE_PLACE_ORDER: u32 = 1 << 0;
+pub const SCOPE_PLACE_ORDER: u32 = 1 << 31;
 
 /// Bitmask flag: agent may cancel a single order.
-pub const SCOPE_CANCEL_ORDER: u32 = 1 << 1;
+pub const SCOPE_CANCEL_ORDER: u32 = 1 << 30;
 
 /// Bitmask flag: agent may cancel all orders for a market.
-pub const SCOPE_CANCEL_ALL_ORDERS: u32 = 1 << 2;
+pub const SCOPE_CANCEL_ALL_ORDERS: u32 = 1 << 29;
 
 /// All valid scope bits combined. Used for validation.
 pub const SCOPE_ALL_VALID: u32 = SCOPE_PLACE_ORDER | SCOPE_CANCEL_ORDER | SCOPE_CANCEL_ALL_ORDERS;

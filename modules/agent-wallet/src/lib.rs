@@ -29,8 +29,8 @@ pub use types::{
 
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    Context, CryptoSpec, EventEmitter, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi,
-    PublicKey, Signature, Spec, StateMap, TxState,
+    Context, CryptoSpec, EventEmitter, GenesisState, HexString, Module, ModuleId, ModuleInfo,
+    ModuleRestApi, Signature, Spec, StateMap, TxState,
 };
 
 /// Agent Wallet Module — scoped delegation of trading permissions.
@@ -87,17 +87,9 @@ impl<S: Spec> Module for AgentWalletModule<S> {
                 scopes,
                 expires_at,
                 nonce,
-                owner_pub_key,
+                owner,
                 signature,
-            } => self.register_agent(
-                agent,
-                scopes,
-                expires_at,
-                nonce,
-                owner_pub_key,
-                signature,
-                state,
-            ),
+            } => self.register_agent(agent, scopes, expires_at, nonce, owner, signature, state),
 
             CallMessage::RevokeAgent { agent } => self.revoke_agent(agent, ctx, state),
         }
@@ -112,28 +104,23 @@ impl<S: Spec> AgentWalletModule<S> {
     /// Build the canonical human-readable message that must be signed by the
     /// owner for `RegisterAgent`.
     pub fn registration_signing_message(
-        owner: &S::Address,
         agent: &S::Address,
         scopes: u32,
         expires_at: u64,
         nonce: u64,
     ) -> String {
         format!(
-            "WINNR Agent Wallet Registration\nowner: {owner}\nagent: {agent}\nscopes: 0x{scopes:08x}\nexpires_at: {expires_at}\nnonce: {nonce}\nversion: 1"
+            "Winnr Agent Wallet Registration\nagent: {agent}\nscopes: 0x{scopes:08x}\nexpires_at: {expires_at}\nnonce: {nonce}\nversion: 1"
         )
     }
 
     fn registration_signing_bytes(
-        owner: &S::Address,
         agent: &S::Address,
         scopes: u32,
         expires_at: u64,
         nonce: u64,
     ) -> Result<Vec<u8>, AgentWalletError> {
-        Ok(
-            Self::registration_signing_message(owner, agent, scopes, expires_at, nonce)
-                .into_bytes(),
-        )
+        Ok(Self::registration_signing_message(agent, scopes, expires_at, nonce).into_bytes())
     }
 
     /// Register (or replace) an agent delegation.
@@ -143,21 +130,20 @@ impl<S: Spec> AgentWalletModule<S> {
         scopes: u32,
         expires_at: u64,
         nonce: u64,
-        owner_pub_key: Vec<u8>,
-        signature: Vec<u8>,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
         state: &mut impl TxState<S>,
     ) -> Result<(), AgentWalletError> {
         let owner_pub_key =
-            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner_pub_key)
+            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner.as_ref().to_vec())
                 .map_err(|_| AgentWalletError::InvalidPublicKey)?;
 
-        let owner: S::Address = owner_pub_key.credential_id().into();
+        let signature =
+            <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
+                .map_err(|_| AgentWalletError::InvalidSignatureBytes)?;
 
-        let signature = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature)
-            .map_err(|_| AgentWalletError::InvalidSignatureBytes)?;
+        let signing_bytes = Self::registration_signing_bytes(&agent, scopes, expires_at, nonce)?;
 
-        let signing_bytes =
-            Self::registration_signing_bytes(&owner, &agent, scopes, expires_at, nonce)?;
         signature
             .verify(&owner_pub_key, &signing_bytes)
             .map_err(|_| AgentWalletError::InvalidSignature)?;
