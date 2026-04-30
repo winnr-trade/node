@@ -116,6 +116,12 @@ impl<S: Spec> OrderbookModule<S> {
         match_result: &MatchResult,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
+        let timestamp = self
+            .chain_state
+            .get_time(state)
+            .into_orderbook_err()?
+            .as_millis() as u64;
+
         for fill in &match_result.fills {
             let mut maker_order = self
                 .orders
@@ -172,6 +178,7 @@ impl<S: Spec> OrderbookModule<S> {
                     buyer: canonical_buyer.to_string(),
                     seller: canonical_seller.to_string(),
                     settlement_kind,
+                    timestamp,
                 },
             );
         }

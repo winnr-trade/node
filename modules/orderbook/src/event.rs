@@ -2,10 +2,10 @@
 //!
 //! All prices are in canonical YES-space.
 
+use crate::SettlementKind;
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::SettlementKind;
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
 
 /// Events emitted by the orderbook module.
@@ -64,6 +64,8 @@ pub enum Event {
         seller: String,
         /// How this trade was settled.
         settlement_kind: SettlementKind,
+        /// Timestamp of trade execution
+        timestamp: u64,
     },
 
     /// Best bid/ask updated (canonical YES-space).
