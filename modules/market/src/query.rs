@@ -8,11 +8,18 @@ use sov_modules_api::{ApiStateAccessor, Spec};
 
 use crate::{Market, MarketModule, Position, PositionKey};
 
-const LIMIT_MARKET_LIST: u64 = 10;
+const MAX_LIMIT_MARKET_LIST: u64 = 100;
 
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 struct MarketListQueryParams {
-    from_id: MarketId,
+    page: u64,
+    limit: u64,
+}
+
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+struct MarketSharesParams<S: Spec> {
+    market_id: MarketId,
+    user_address: S::Address,
 }
 
 impl<S: Spec> MarketModule<S> {
@@ -25,10 +32,11 @@ impl<S: Spec> MarketModule<S> {
         mut acc: ApiStateAccessor<S>,
         params: Query<MarketListQueryParams>,
     ) -> ApiResult<Vec<Market<S>>> {
-        let from_idx = params.from_id.0;
+        let from_idx = params.page;
+        let limit = params.limit.min(MAX_LIMIT_MARKET_LIST);
 
         let mut markets = Vec::new();
-        for idx in from_idx..(from_idx + LIMIT_MARKET_LIST) {
+        for idx in from_idx..(from_idx + limit) {
             let market_id = MarketId(idx);
             let maybe_market = state.markets.get(&market_id, &mut acc).unwrap_infallible();
 
@@ -56,14 +64,14 @@ impl<S: Spec> MarketModule<S> {
         Ok(market.into())
     }
 
-    async fn route_outcome_shares(
+    async fn route_shares(
         state: ApiState<S, Self>,
         mut acc: ApiStateAccessor<S>,
-        Path((market_id, user_address)): Path<(MarketId, S::Address)>,
+        params: Query<MarketSharesParams<S>>,
     ) -> ApiResult<Position> {
         let position_id = PositionKey {
-            market_id,
-            address: user_address,
+            market_id: params.market_id,
+            address: params.user_address,
         };
 
         let position = state
@@ -81,25 +89,14 @@ impl<S: Spec> HasCustomRestApi for MarketModule<S> {
 
     fn custom_rest_api(&self, state: ApiState<Self::Spec>) -> axum::Router<()> {
         axum::Router::new()
-            .route("/status", get(Self::route_status))
             .route("/list", get(Self::route_market_list))
             .route("/:marketId", get(Self::route_market))
-            .route(
-                "/:marketId/shares/:userAddress",
-                get(Self::route_outcome_shares),
-            )
+            .route("/shares", get(Self::route_shares))
+            .route("/status", get(Self::route_status))
             .with_state(state.with(self.clone()))
     }
 
     fn custom_openapi_spec(&self) -> Option<OpenApi> {
-        // let mut api: OpenApi = serde_yaml::from_str(include_str!("../../../openapi/market.yaml"))
-        //     .expect("Invalid OpenAPI spec");
-
-        // for path_item in api.paths.paths.values_mut() {
-        //     path_item.extensions = None;
-        // }
-
-        // Some(api)
         None
     }
 }
