@@ -26,8 +26,7 @@ fn test_mint_shares_success() {
 
     // Verify market totals
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 100);
-    assert_eq!(market.total_no_shares, 100);
+    assert_eq!(market.total_shares, 100);
 
     // Verify user position
     let position = get_position(&runner, market_id, &user).expect("position should exist");
@@ -59,8 +58,7 @@ fn test_mint_shares_multiple_times() {
 
     // Verify cumulative totals
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 350);
-    assert_eq!(market.total_no_shares, 350);
+    assert_eq!(market.total_shares, 350);
 
     let position = get_position(&runner, market_id, &user).expect("position should exist");
     assert_eq!(position.yes_shares, 350);
@@ -151,7 +149,6 @@ fn test_mint_shares_different_users() {
 
     // Verify combined market totals
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 300);
-    assert_eq!(market.total_no_shares, 300);
+    assert_eq!(market.total_shares, 300);
     assert_eq!(get_market_collateral(&runner, market_id), 300);
 }

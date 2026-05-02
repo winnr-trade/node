@@ -31,8 +31,8 @@ fn test_create_market_success() {
     assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.outcome, None);
     assert_eq!(market.resolver, Resolver::Address(user.address()));
-    assert_eq!(market.total_yes_shares, 0);
-    assert_eq!(market.total_no_shares, 0);
+    assert_eq!(market.total_shares, 0);
+    assert_eq!(market.total_volume, 0);
     assert!(
         market.created_at > 0,
         "created_at should be set to current time"

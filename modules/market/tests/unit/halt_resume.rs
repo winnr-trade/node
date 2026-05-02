@@ -207,8 +207,7 @@ fn test_mint_on_halted_market_fails() {
 
     // Market totals should be unchanged
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 0);
-    assert_eq!(market.total_no_shares, 0);
+    assert_eq!(market.total_shares, 0);
 }
 
 #[test]
@@ -250,8 +249,7 @@ fn test_mint_after_resume_succeeds() {
 
     // Verify shares were minted
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 100);
-    assert_eq!(market.total_no_shares, 100);
+    assert_eq!(market.total_shares, 100);
 }
 
 #[test]

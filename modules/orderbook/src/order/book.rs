@@ -144,14 +144,14 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
-        market.total_yes_shares = market
-            .total_yes_shares
+        market.total_shares = market
+            .total_shares
             .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_yes_shares")))?;
-        market.total_no_shares = market
-            .total_no_shares
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_shares")))?;
+        market.total_volume = market
+            .total_volume
             .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_no_shares")))?;
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_volume")))?;
         self.market
             .markets
             .set(&market_id, &market, state)
@@ -278,6 +278,22 @@ impl<S: Spec> OrderbookModule<S> {
             .set(&buyer_key, &buyer_pos, state)
             .into_orderbook_err()?;
 
+        // Track trading volume
+        let mut market = self
+            .market
+            .markets
+            .get(&market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound { market_id })?;
+        market.total_volume = market
+            .total_volume
+            .checked_add(fill.price.cost(qty))
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_volume")))?;
+        self.market
+            .markets
+            .set(&market_id, &market, state)
+            .into_orderbook_err()?;
+
         // Release buyer's collateral (consumed as payment)
         let buyer_release = fill.price.cost(qty);
         self.unlock_collateral(canonical_buyer, market_id, buyer_release, state)?;
@@ -340,6 +356,22 @@ impl<S: Spec> OrderbookModule<S> {
         self.market
             .positions
             .set(&seller_key, &seller_pos, state)
+            .into_orderbook_err()?;
+
+        // Track trading volume
+        let mut market = self
+            .market
+            .markets
+            .get(&market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound { market_id })?;
+        market.total_volume = market
+            .total_volume
+            .checked_add(fill.price.complement().cost(qty))
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_volume")))?;
+        self.market
+            .markets
+            .set(&market_id, &market, state)
             .into_orderbook_err()?;
 
         // Release canonical seller's collateral (they are BUY NO, consumed as payment)
@@ -415,14 +447,10 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
-        market.total_yes_shares = market
-            .total_yes_shares
+        market.total_shares = market
+            .total_shares
             .checked_sub(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in total_yes_shares")))?;
-        market.total_no_shares = market
-            .total_no_shares
-            .checked_sub(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in total_no_shares")))?;
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in total_shares")))?;
         self.market
             .markets
             .set(&market_id, &market, state)

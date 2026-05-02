@@ -80,8 +80,8 @@ impl<S: Spec> MarketModule<S> {
             halted: false,
             outcome: None,
             resolver: resolver.clone(),
-            total_yes_shares: 0,
-            total_no_shares: 0,
+            total_shares: 0,
+            total_volume: 0,
             created_at: current_time,
         };
 

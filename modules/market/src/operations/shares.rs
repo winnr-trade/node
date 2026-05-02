@@ -34,14 +34,10 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err()?;
 
         // Update market totals
-        market.total_yes_shares = market
-            .total_yes_shares
+        market.total_shares = market
+            .total_shares
             .checked_add(amount)
-            .ok_or_else(|| anyhow::anyhow!("Overflow in total_yes_shares"))?;
-        market.total_no_shares = market
-            .total_no_shares
-            .checked_add(amount)
-            .ok_or_else(|| anyhow::anyhow!("Overflow in total_no_shares"))?;
+            .ok_or_else(|| anyhow::anyhow!("Overflow in total_shares"))?;
         self.markets
             .set(&market_id, &market, state)
             .into_market_err()?;
@@ -154,8 +150,7 @@ impl<S: Spec> MarketModule<S> {
         }
 
         // Update market totals
-        market.total_yes_shares -= amount;
-        market.total_no_shares -= amount;
+        market.total_shares -= amount;
         self.markets
             .set(&market_id, &market, state)
             .into_market_err()?;

@@ -40,8 +40,7 @@ fn test_redeem_shares_success() {
 
     // Verify market totals reduced
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 50);
-    assert_eq!(market.total_no_shares, 50);
+    assert_eq!(market.total_shares, 50);
     assert_eq!(get_market_collateral(&runner, market_id), 50);
 }
 
@@ -79,8 +78,7 @@ fn test_redeem_all_shares() {
     );
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 0);
-    assert_eq!(market.total_no_shares, 0);
+    assert_eq!(market.total_shares, 0);
     assert_eq!(get_market_collateral(&runner, market_id), 0);
 }
 

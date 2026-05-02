@@ -449,3 +449,167 @@ fn test_bid_matches_ask_at_lower_price_executes_at_maker_price() {
     assert_eq!(ask.status, OrderStatus::Filled);
     assert_eq!(ask.remaining_quantity, 0);
 }
+
+#[test]
+fn test_mint_pair_increases_volume_by_quantity_in_collateral_units() {
+    let (data, mut runner) = setup();
+
+    assert_eq!(utils::get_market_total_volume(&runner, data.market_id), 0);
+    assert_eq!(utils::get_market_collateral(&runner, data.market_id), 0);
+
+    // BUY NO @ 5000 (canonical Ask @ 5000)
+    utils::place_order(
+        &mut runner,
+        &data.user1,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    // BUY YES @ 5000 (canonical Bid @ 5000) -> MintPair fill
+    utils::place_order(
+        &mut runner,
+        &data.user2,
+        data.market_id,
+        OutcomeSide::Yes,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    assert_eq!(utils::get_market_total_volume(&runner, data.market_id), 100);
+    assert_eq!(utils::get_market_collateral(&runner, data.market_id), 100);
+}
+
+#[test]
+fn test_transfer_no_uses_complement_price_for_volume() {
+    let (data, mut runner) = setup();
+
+    // Bootstrap balances: mint one YES/NO pair so user1 owns NO shares.
+    utils::place_order(
+        &mut runner,
+        &data.user1,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+    utils::place_order(
+        &mut runner,
+        &data.user2,
+        data.market_id,
+        OutcomeSide::Yes,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    let volume_before = utils::get_market_total_volume(&runner, data.market_id);
+    let collateral_before = utils::get_market_collateral(&runner, data.market_id);
+
+    // user1 SELL NO @ 3000 (canonical Bid @ 7000)
+    utils::place_order(
+        &mut runner,
+        &data.user1,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Ask,
+        Price(3000),
+        100,
+        OrderType::Limit,
+    );
+
+    // user2 BUY NO @ 3000 (canonical Ask @ 7000) -> TransferNo fill at canonical 7000.
+    utils::place_order(
+        &mut runner,
+        &data.user2,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Bid,
+        Price(3000),
+        100,
+        OrderType::Limit,
+    );
+
+    let expected_delta = Price(7000).complement().cost(100);
+    assert_eq!(expected_delta, 30);
+    assert_eq!(
+        utils::get_market_total_volume(&runner, data.market_id),
+        volume_before + expected_delta
+    );
+    assert_eq!(
+        utils::get_market_collateral(&runner, data.market_id),
+        collateral_before
+    );
+}
+
+#[test]
+fn test_merge_pair_does_not_increase_volume_and_reduces_collateral() {
+    let (data, mut runner) = setup();
+
+    // Bootstrap balances: mint one YES/NO pair.
+    // user1 gets NO shares, user2 gets YES shares.
+    utils::place_order(
+        &mut runner,
+        &data.user1,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+    utils::place_order(
+        &mut runner,
+        &data.user2,
+        data.market_id,
+        OutcomeSide::Yes,
+        Side::Bid,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    let volume_before = utils::get_market_total_volume(&runner, data.market_id);
+    let collateral_before = utils::get_market_collateral(&runner, data.market_id);
+
+    // user2 SELL YES @ 5000 (canonical Ask @ 5000)
+    utils::place_order(
+        &mut runner,
+        &data.user2,
+        data.market_id,
+        OutcomeSide::Yes,
+        Side::Ask,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    // user1 SELL NO @ 5000 (canonical Bid @ 5000) -> MergePair fill.
+    utils::place_order(
+        &mut runner,
+        &data.user1,
+        data.market_id,
+        OutcomeSide::No,
+        Side::Ask,
+        Price(5000),
+        100,
+        OrderType::Limit,
+    );
+
+    assert_eq!(
+        utils::get_market_total_volume(&runner, data.market_id),
+        volume_before
+    );
+    assert_eq!(
+        utils::get_market_collateral(&runner, data.market_id),
+        collateral_before - 100
+    );
+}
