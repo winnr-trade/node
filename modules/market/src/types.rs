@@ -72,8 +72,6 @@ pub struct Market<S: Spec> {
     pub resolver: Resolver<S>,
     /// Total outcome shares in circulation (YES == NO always, so one counter suffices).
     pub total_shares: u64,
-    /// Total trading volume in collateral base units (same denomination as the collateral token).
-    pub total_volume: u64,
     /// Slot when market was created.
     pub created_at: u64,
 }

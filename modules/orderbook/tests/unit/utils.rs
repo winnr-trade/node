@@ -446,19 +446,6 @@ pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: 
     })
 }
 
-pub fn get_market_total_volume(runner: &TestRunner<RT, S>, market_id: MarketId) -> u64 {
-    runner.query_state(|state| {
-        runner
-            .runtime()
-            .market
-            .markets
-            .get(&market_id, state)
-            .expect("failed to read market")
-            .map(|m| m.total_volume)
-            .unwrap_or(0)
-    })
-}
-
 pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u64 {
     runner.query_state(|state| {
         runner

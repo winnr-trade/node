@@ -81,7 +81,6 @@ impl<S: Spec> MarketModule<S> {
             outcome: None,
             resolver: resolver.clone(),
             total_shares: 0,
-            total_volume: 0,
             created_at: current_time,
         };
 
