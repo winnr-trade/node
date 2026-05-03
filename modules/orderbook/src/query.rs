@@ -1,7 +1,6 @@
-use crate::{MarketSideKey, Order, OrderbookModule, PriceLevelKey};
+use crate::{MarketSideKey, OrderbookModule, PriceLevelKey};
 use market::MarketId;
-use shared_types::{OrderId, Price, Side};
-use sov_modules_api::prelude::tokio::time::{sleep, Duration};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
 use sov_modules_api::prelude::{
     axum::{
@@ -9,13 +8,13 @@ use sov_modules_api::prelude::{
             ws::{Message, WebSocket, WebSocketUpgrade},
             Query,
         },
-        response::{IntoResponse, Response},
+        response::IntoResponse,
         routing::{any, get},
         Json, Router,
     },
     UnwrapInfallible,
 };
-use sov_modules_api::rest::utils::{errors, ApiResult, Path};
+use sov_modules_api::rest::utils::{errors, ApiResult};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};
 use std::collections::HashMap;
@@ -24,6 +23,24 @@ use std::collections::HashMap;
 struct UserOrdersQueryParams<S: Spec> {
     user_address: S::Address,
     market_id: Option<MarketId>,
+}
+
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(bound(serialize = "", deserialize = ""))]
+struct UserOrdersResponse<S: Spec> {
+    id: OrderId,
+    market_id: MarketId,
+    outcome: OutcomeSide,
+    side: Side,
+    canonical_side: Side,
+    canonical_price: Price,
+    original_quantity: u64,
+    remaining_quantity: u64,
+    owner: S::Address,
+    order_type: OrderType,
+    created_at: u64,
+    status: OrderStatus,
+    market_question: String,
 }
 
 impl<S: Spec> OrderbookModule<S> {
@@ -101,18 +118,20 @@ impl<S: Spec> OrderbookModule<S> {
         params: Query<UserOrdersQueryParams<S>>,
         state: ApiState<S, Self>,
         mut acc: ApiStateAccessor<S>,
-    ) -> ApiResult<Vec<Order<S>>> {
+    ) -> ApiResult<Vec<UserOrdersResponse<S>>> {
         let user_address = params.user_address;
         let maybe_market_id = params.market_id;
 
-        let orders_ids = state
+        let order_ids = state
             .user_orders
             .get(&user_address, &mut acc)
-            .unwrap()
+            .unwrap_infallible()
             .unwrap_or_default();
 
         let mut orders = Vec::new();
-        for oid in orders_ids {
+        let mut market_questions: HashMap<MarketId, String> = HashMap::new();
+
+        for oid in order_ids {
             let order = state
                 .orders
                 .get(&oid, &mut acc)
@@ -124,9 +143,39 @@ impl<S: Spec> OrderbookModule<S> {
                 None => true,
             };
 
-            if include {
-                orders.push(order);
+            if !include {
+                continue;
             }
+
+            let market_question = if let Some(question) = market_questions.get(&order.market_id) {
+                question.clone()
+            } else {
+                let market = state
+                    .market
+                    .markets
+                    .get(&order.market_id, &mut acc)
+                    .unwrap_infallible()
+                    .ok_or_else(|| errors::not_found_404("Market", order.market_id))?;
+                let question = market.question.to_string();
+                market_questions.insert(order.market_id, question.clone());
+                question
+            };
+
+            orders.push(UserOrdersResponse {
+                id: order.id,
+                market_id: order.market_id,
+                market_question,
+                outcome: order.outcome,
+                side: order.side,
+                canonical_side: order.canonical_side,
+                canonical_price: order.canonical_price,
+                original_quantity: order.original_quantity,
+                remaining_quantity: order.remaining_quantity,
+                owner: order.owner,
+                order_type: order.order_type,
+                created_at: order.created_at,
+                status: order.status,
+            });
         }
 
         Ok(orders.into())

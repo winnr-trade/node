@@ -6,7 +6,7 @@ use sov_modules_api::rest::utils::{errors, ApiResult, Path, Query};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};
 
-use crate::{Market, MarketModule, MarketStatus, Position, PositionKey};
+use crate::{Market, MarketModule, MarketStatus, Outcome, Position, PositionKey};
 
 const MAX_LIMIT_MARKET_LIST: u64 = 100;
 const MAX_LIMIT_ACTIVE_POSITIONS: u64 = 100;
@@ -24,16 +24,17 @@ struct MarketSharesParams<S: Spec> {
 }
 
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
-struct ActivePositionsParams<S: Spec> {
+struct ActivePositionsQueryParams<S: Spec> {
     user_address: S::Address,
     page: u64,
     limit: u64,
 }
 
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
 struct ActivePosition {
     market_id: MarketId,
+    question: String,
+    outcome: Option<Outcome>,
     yes_shares: u64,
     no_shares: u64,
 }
@@ -102,9 +103,13 @@ impl<S: Spec> MarketModule<S> {
     async fn route_active_positions(
         state: ApiState<S, Self>,
         mut acc: ApiStateAccessor<S>,
-        params: Query<ActivePositionsParams<S>>,
+        params: Query<ActivePositionsQueryParams<S>>,
     ) -> ApiResult<Vec<ActivePosition>> {
-        let now_ms = state.chain_state.get_time(&mut acc).unwrap_infallible().as_millis() as u64;
+        let now_ms = state
+            .chain_state
+            .get_time(&mut acc)
+            .unwrap_infallible()
+            .as_millis() as u64;
         let from_idx = params.page;
         let limit = params.limit.min(MAX_LIMIT_ACTIVE_POSITIONS);
 
@@ -134,7 +139,11 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 user_address: params.user_address.clone(),
             };
-            let position = match state.positions.get(&position_key, &mut acc).unwrap_infallible() {
+            let position = match state
+                .positions
+                .get(&position_key, &mut acc)
+                .unwrap_infallible()
+            {
                 Some(position) => position,
                 None => continue,
             };
@@ -145,6 +154,8 @@ impl<S: Spec> MarketModule<S> {
 
             active_positions.push(ActivePosition {
                 market_id,
+                question: market.question.to_string(),
+                outcome: market.outcome,
                 yes_shares: position.yes_shares,
                 no_shares: position.no_shares,
             });
@@ -160,7 +171,7 @@ impl<S: Spec> HasCustomRestApi for MarketModule<S> {
     fn custom_rest_api(&self, state: ApiState<Self::Spec>) -> axum::Router<()> {
         axum::Router::new()
             .route("/list", get(Self::route_market_list))
-            .route("/positions/active", get(Self::route_active_positions))
+            .route("/positions", get(Self::route_active_positions))
             .route("/:marketId", get(Self::route_market))
             .route("/shares", get(Self::route_shares))
             .route("/status", get(Self::route_status))
