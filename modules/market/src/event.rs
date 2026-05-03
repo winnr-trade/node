@@ -38,21 +38,19 @@ pub enum Event {
     },
 
     /// Shares were minted.
+    /// `amount` collateral was deposited; the same quantity of YES and NO shares was issued.
     SharesMinted {
         market_id: MarketId,
         user: String,
-        collateral_amount: u64,
-        yes_shares: u64,
-        no_shares: u64,
+        amount: u64,
     },
 
     /// Shares were redeemed.
+    /// `amount` YES+NO share pairs were burned; the same quantity of collateral was returned.
     SharesRedeemed {
         market_id: MarketId,
         user: String,
-        yes_shares_burned: u64,
-        no_shares_burned: u64,
-        collateral_returned: u64,
+        amount: u64,
     },
 
     /// Market was resolved.

@@ -80,7 +80,7 @@ impl<S: Spec> OrderbookModule<S> {
     ) -> Result<(), OrderbookError> {
         let position_key = PositionKey {
             market_id,
-            address: user.clone(),
+            user_address: user.clone(),
         };
         let position = self
             .market

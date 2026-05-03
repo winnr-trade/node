@@ -16,6 +16,7 @@ mod types;
 
 #[cfg(feature = "native")]
 mod query;
+use pyth::PythModule;
 #[cfg(feature = "native")]
 pub use query::*;
 
@@ -26,12 +27,13 @@ pub use call::{CallMessage, ResolutionData};
 pub use error::MarketError;
 pub use event::Event;
 pub use genesis::MarketGenesisConfig;
+use sov_chain_state::ChainState;
 pub use types::*;
 
 // Re-export shared types for convenience
 pub use shared_types::{MarketId, MarketStatus, Outcome};
 
-use sov_bank::TokenId;
+use sov_bank::{Bank, TokenId};
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
     TxState,
@@ -67,21 +69,25 @@ pub struct MarketModule<S: Spec> {
     #[state]
     pub positions: StateMap<PositionKey<S>, Position>,
 
-    /// Total collateral held by the module per market
+    /// User index: user -> markets where the user has non-zero shares.
+    #[state]
+    pub user_active_markets: StateMap<S::Address, Vec<MarketId>>,
+
+    /// Total collateral held by the module per market.
     #[state]
     pub market_collateral: StateMap<MarketId, u64>,
 
     /// Bank module for token operations
     #[module]
-    pub bank: sov_bank::Bank<S>,
+    pub bank: Bank<S>,
 
     /// Chain state module for accessing chain information
     #[module]
-    pub chain_state: sov_chain_state::ChainState<S>,
+    pub chain_state: ChainState<S>,
 
     /// Pyth oracle module for price feed resolution
     #[module]
-    pub pyth: pyth::PythModule<S>,
+    pub pyth: PythModule<S>,
 }
 
 impl<S: Spec> Module for MarketModule<S> {
@@ -138,6 +144,11 @@ impl<S: Spec> Module for MarketModule<S> {
             } => self.set_supported_collateral_token(token_id, supported, ctx, state),
 
             CallMessage::ClaimWinnings { market_id } => self.claim_winnings(market_id, ctx, state),
+
+            CallMessage::CompactUserActiveMarkets { max_scan } => {
+                self.compact_user_active_markets(ctx.sender(), max_scan as usize, state)?;
+                Ok(())
+            }
 
             CallMessage::HaltMarket { market_id } => {
                 self.set_market_status(market_id, true, ctx, state)

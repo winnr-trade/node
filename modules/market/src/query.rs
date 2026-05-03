@@ -6,9 +6,10 @@ use sov_modules_api::rest::utils::{errors, ApiResult, Path, Query};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};
 
-use crate::{Market, MarketModule, Position, PositionKey};
+use crate::{Market, MarketModule, MarketStatus, Position, PositionKey};
 
 const MAX_LIMIT_MARKET_LIST: u64 = 100;
+const MAX_LIMIT_ACTIVE_POSITIONS: u64 = 100;
 
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 struct MarketListQueryParams {
@@ -20,6 +21,21 @@ struct MarketListQueryParams {
 struct MarketSharesParams<S: Spec> {
     market_id: MarketId,
     user_address: S::Address,
+}
+
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+struct ActivePositionsParams<S: Spec> {
+    user_address: S::Address,
+    page: u64,
+    limit: u64,
+}
+
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ActivePosition {
+    market_id: MarketId,
+    yes_shares: u64,
+    no_shares: u64,
 }
 
 impl<S: Spec> MarketModule<S> {
@@ -71,7 +87,7 @@ impl<S: Spec> MarketModule<S> {
     ) -> ApiResult<Position> {
         let position_id = PositionKey {
             market_id: params.market_id,
-            address: params.user_address,
+            user_address: params.user_address,
         };
 
         let position = state
@@ -82,6 +98,60 @@ impl<S: Spec> MarketModule<S> {
 
         Ok(position.into())
     }
+
+    async fn route_active_positions(
+        state: ApiState<S, Self>,
+        mut acc: ApiStateAccessor<S>,
+        params: Query<ActivePositionsParams<S>>,
+    ) -> ApiResult<Vec<ActivePosition>> {
+        let now_ms = state.chain_state.get_time(&mut acc).unwrap_infallible().as_millis() as u64;
+        let from_idx = params.page;
+        let limit = params.limit.min(MAX_LIMIT_ACTIVE_POSITIONS);
+
+        let user_active_markets = state
+            .user_active_markets
+            .get(&params.user_address, &mut acc)
+            .unwrap_infallible()
+            .unwrap_or_default();
+
+        let mut active_positions = Vec::new();
+
+        for market_id in user_active_markets
+            .into_iter()
+            .skip(from_idx as usize)
+            .take(limit as usize)
+        {
+            let market = match state.markets.get(&market_id, &mut acc).unwrap_infallible() {
+                Some(market) => market,
+                None => continue,
+            };
+
+            if market.status() != MarketStatus::Active || now_ms >= market.resolution_time {
+                continue;
+            }
+
+            let position_key = PositionKey {
+                market_id,
+                user_address: params.user_address.clone(),
+            };
+            let position = match state.positions.get(&position_key, &mut acc).unwrap_infallible() {
+                Some(position) => position,
+                None => continue,
+            };
+
+            if position.is_empty() {
+                continue;
+            }
+
+            active_positions.push(ActivePosition {
+                market_id,
+                yes_shares: position.yes_shares,
+                no_shares: position.no_shares,
+            });
+        }
+
+        Ok(active_positions.into())
+    }
 }
 
 impl<S: Spec> HasCustomRestApi for MarketModule<S> {
@@ -90,6 +160,7 @@ impl<S: Spec> HasCustomRestApi for MarketModule<S> {
     fn custom_rest_api(&self, state: ApiState<Self::Spec>) -> axum::Router<()> {
         axum::Router::new()
             .route("/list", get(Self::route_market_list))
+            .route("/positions/active", get(Self::route_active_positions))
             .route("/:marketId", get(Self::route_market))
             .route("/shares", get(Self::route_shares))
             .route("/status", get(Self::route_status))

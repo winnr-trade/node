@@ -414,7 +414,7 @@ pub fn get_locked_collateral(
 pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
     let key = market::PositionKey::<S> {
         market_id,
-        address: user.address(),
+        user_address: user.address(),
     };
     runner.query_state(|state| {
         runner
@@ -432,7 +432,7 @@ pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id:
 pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
     let key = market::PositionKey::<S> {
         market_id,
-        address: user.address(),
+        user_address: user.address(),
     };
     runner.query_state(|state| {
         runner

@@ -27,7 +27,7 @@ impl<S: Spec> MarketModule<S> {
         // Get user position
         let position_key: PositionKey<S> = PositionKey {
             market_id,
-            address: ctx.sender().clone(),
+            user_address: ctx.sender().clone(),
         };
         let position = self
             .positions
@@ -50,10 +50,8 @@ impl<S: Spec> MarketModule<S> {
             return Err(MarketError::NoWinningsToClaim { market_id });
         }
 
-        // Remove position
-        self.positions
-            .remove(&position_key, state)
-            .into_market_err()?;
+        // Remove position and accessory index membership.
+        self.remove_position(market_id, ctx.sender(), state)?;
 
         // Update collateral tracking
         let current_collateral = self

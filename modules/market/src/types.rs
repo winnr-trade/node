@@ -126,13 +126,13 @@ impl Position {
 )]
 pub struct PositionKey<S: Spec> {
     pub market_id: MarketId,
-    pub address: S::Address,
+    pub user_address: S::Address,
 }
 
 impl<S: Spec> core::fmt::Display for PositionKey<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         // Serialize both fields in a parseable format
-        write!(f, "{}:{}", self.market_id.0, self.address)
+        write!(f, "{}:{}", self.market_id.0, self.user_address)
     }
 }
 
@@ -144,7 +144,10 @@ impl<S: Spec> FromStr for PositionKey<S> {
         let parts: Vec<&str> = s.split(':').collect();
         let market_id = MarketId(u64::from_str(parts[0])?);
         let address = S::Address::from_str(parts[1]).map_err(|e| anyhow::anyhow!("{:?}", e))?;
-        Ok(PositionKey { market_id, address })
+        Ok(PositionKey {
+            market_id,
+            user_address: address,
+        })
     }
 }
 

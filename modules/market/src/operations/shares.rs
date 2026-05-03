@@ -1,5 +1,5 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
-use crate::{Event, Market, MarketError, MarketModule, PositionKey};
+use crate::{Event, Market, MarketError, MarketModule};
 use shared_types::{MarketId, MarketStatus};
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
@@ -52,27 +52,8 @@ impl<S: Spec> MarketModule<S> {
             .set(&market_id, &(current_collateral + amount), state)
             .into_market_err()?;
 
-        // Update user position
-        let position_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: ctx.sender().clone(),
-        };
-        let mut position = self
-            .positions
-            .get(&position_key, state)
-            .into_market_err()?
-            .unwrap_or_default();
-        position.yes_shares = position
-            .yes_shares
-            .checked_add(amount)
-            .ok_or_else(|| anyhow::anyhow!("Overflow in yes_shares"))?;
-        position.no_shares = position
-            .no_shares
-            .checked_add(amount)
-            .ok_or_else(|| anyhow::anyhow!("Overflow in no_shares"))?;
-        self.positions
-            .set(&position_key, &position, state)
-            .into_market_err()?;
+        // Update user position and accessory index.
+        self.add_position_shares(market_id, ctx.sender(), amount, amount, state)?;
 
         info!(
             market_id = %market_id,
@@ -86,9 +67,7 @@ impl<S: Spec> MarketModule<S> {
             Event::SharesMinted {
                 market_id,
                 user: ctx.sender().to_string(),
-                collateral_amount: amount,
-                yes_shares: amount,
-                no_shares: amount,
+                amount,
             },
         );
 
@@ -117,37 +96,8 @@ impl<S: Spec> MarketModule<S> {
             return Err(MarketError::MarketAlreadyResolved { market_id });
         }
 
-        // Get and validate user position
-        let position_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: ctx.sender().clone(),
-        };
-        let mut position = self
-            .positions
-            .get_or_err(&position_key, state)
-            .into_market_err_flat()?;
-
-        if position.yes_shares < amount || position.no_shares < amount {
-            return Err(MarketError::InsufficientShares {
-                required: amount,
-                available_yes: position.yes_shares,
-                available_no: position.no_shares,
-            });
-        }
-
-        // Burn shares
-        position.yes_shares -= amount;
-        position.no_shares -= amount;
-
-        if position.is_empty() {
-            self.positions
-                .remove(&position_key, state)
-                .into_market_err()?;
-        } else {
-            self.positions
-                .set(&position_key, &position, state)
-                .into_market_err()?;
-        }
+        // Burn shares and keep accessory index in sync.
+        self.sub_position_shares(market_id, ctx.sender(), amount, amount, state)?;
 
         // Update market totals
         market.total_shares -= amount;
@@ -194,9 +144,7 @@ impl<S: Spec> MarketModule<S> {
             Event::SharesRedeemed {
                 market_id,
                 user: ctx.sender().to_string(),
-                yes_shares_burned: amount,
-                no_shares_burned: amount,
-                collateral_returned: amount,
+                amount,
             },
         );
 

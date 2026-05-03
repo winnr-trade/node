@@ -3,7 +3,7 @@ use crate::{
     Event, Fill, MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey,
     SettlementKind,
 };
-use market::{MarketId, PositionKey};
+use market::MarketId;
 use shared_types::{OrderId, OutcomeSide, Price, Side};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
@@ -168,44 +168,12 @@ impl<S: Spec> OrderbookModule<S> {
             .set(&market_id, &new_collateral, state)
             .into_orderbook_err()?;
 
-        // Allocate YES shares to canonical buyer
-        let buyer_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_buyer.clone(),
-        };
-        let mut buyer_pos = self
-            .market
-            .positions
-            .get(&buyer_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        buyer_pos.yes_shares = buyer_pos
-            .yes_shares
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in yes_shares")))?;
+        // Allocate YES to buyer and NO to seller.
         self.market
-            .positions
-            .set(&buyer_key, &buyer_pos, state)
+            .add_position_shares(market_id, canonical_buyer, qty, 0, state)
             .into_orderbook_err()?;
-
-        // Allocate NO shares to canonical seller
-        let seller_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_seller.clone(),
-        };
-        let mut seller_pos = self
-            .market
-            .positions
-            .get(&seller_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        seller_pos.no_shares = seller_pos
-            .no_shares
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in no_shares")))?;
         self.market
-            .positions
-            .set(&seller_key, &seller_pos, state)
+            .add_position_shares(market_id, canonical_seller, 0, qty, state)
             .into_orderbook_err()?;
 
         // Release collateral from both sides (consumed into backing)
@@ -236,42 +204,12 @@ impl<S: Spec> OrderbookModule<S> {
         // Unlock seller's YES shares using generic unlock helper
         self.unlock_shares(canonical_seller, market_id, OutcomeSide::Yes, qty, state)?;
 
-        // Transfer YES: seller → buyer
-        let seller_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_seller.clone(),
-        };
-        let mut seller_pos = self
-            .market
-            .positions
-            .get(&seller_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        seller_pos.yes_shares = seller_pos.yes_shares.checked_sub(qty).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in seller yes_shares"))
-        })?;
+        // Transfer YES: seller -> buyer.
         self.market
-            .positions
-            .set(&seller_key, &seller_pos, state)
+            .sub_position_shares(market_id, canonical_seller, qty, 0, state)
             .into_orderbook_err()?;
-
-        let buyer_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_buyer.clone(),
-        };
-        let mut buyer_pos = self
-            .market
-            .positions
-            .get(&buyer_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        buyer_pos.yes_shares = buyer_pos
-            .yes_shares
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in buyer yes_shares")))?;
         self.market
-            .positions
-            .set(&buyer_key, &buyer_pos, state)
+            .add_position_shares(market_id, canonical_buyer, qty, 0, state)
             .into_orderbook_err()?;
 
         // Release buyer's collateral (consumed as payment)
@@ -299,43 +237,12 @@ impl<S: Spec> OrderbookModule<S> {
         // Unlock buyer's NO shares using generic unlock helper
         self.unlock_shares(canonical_buyer, market_id, OutcomeSide::No, qty, state)?;
 
-        // Transfer NO: canonical buyer → canonical seller
-        let buyer_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_buyer.clone(),
-        };
-        let mut buyer_pos = self
-            .market
-            .positions
-            .get(&buyer_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        buyer_pos.no_shares = buyer_pos
-            .no_shares
-            .checked_sub(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in buyer no_shares")))?;
+        // Transfer NO: canonical buyer -> canonical seller.
         self.market
-            .positions
-            .set(&buyer_key, &buyer_pos, state)
+            .sub_position_shares(market_id, canonical_buyer, 0, qty, state)
             .into_orderbook_err()?;
-
-        let seller_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_seller.clone(),
-        };
-        let mut seller_pos = self
-            .market
-            .positions
-            .get(&seller_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        seller_pos.no_shares = seller_pos
-            .no_shares
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in seller no_shares")))?;
         self.market
-            .positions
-            .set(&seller_key, &seller_pos, state)
+            .add_position_shares(market_id, canonical_seller, 0, qty, state)
             .into_orderbook_err()?;
 
         // Release canonical seller's collateral (they are BUY NO, consumed as payment)
@@ -364,43 +271,12 @@ impl<S: Spec> OrderbookModule<S> {
         self.unlock_shares(canonical_buyer, market_id, OutcomeSide::No, qty, state)?;
         self.unlock_shares(canonical_seller, market_id, OutcomeSide::Yes, qty, state)?;
 
-        // Burn NO shares from canonical buyer (SELL NO)
-        let buyer_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_buyer.clone(),
-        };
-        let mut buyer_pos = self
-            .market
-            .positions
-            .get(&buyer_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        buyer_pos.no_shares = buyer_pos
-            .no_shares
-            .checked_sub(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in buyer no_shares")))?;
+        // Burn NO from canonical buyer and YES from canonical seller.
         self.market
-            .positions
-            .set(&buyer_key, &buyer_pos, state)
+            .sub_position_shares(market_id, canonical_buyer, 0, qty, state)
             .into_orderbook_err()?;
-
-        // Burn YES shares from canonical seller (SELL YES)
-        let seller_key: PositionKey<S> = PositionKey {
-            market_id,
-            address: canonical_seller.clone(),
-        };
-        let mut seller_pos = self
-            .market
-            .positions
-            .get(&seller_key, state)
-            .into_orderbook_err()?
-            .unwrap_or_default();
-        seller_pos.yes_shares = seller_pos.yes_shares.checked_sub(qty).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in seller yes_shares"))
-        })?;
         self.market
-            .positions
-            .set(&seller_key, &seller_pos, state)
+            .sub_position_shares(market_id, canonical_seller, qty, 0, state)
             .into_orderbook_err()?;
 
         // Decrease market supply totals

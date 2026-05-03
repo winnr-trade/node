@@ -66,6 +66,12 @@ pub enum CallMessage<S: Spec> {
         market_id: MarketId,
     },
 
+    /// Compact active-market index for the sender.
+    CompactUserActiveMarkets {
+        /// Maximum entries to scan in this call.
+        max_scan: u32,
+    },
+
     /// Set supported collateral token (admin only).
     SetSupportedCollateralToken {
         /// Token to set support for.

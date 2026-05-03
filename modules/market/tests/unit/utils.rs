@@ -134,7 +134,7 @@ pub fn get_position(
     runner.query_state(|state| {
         let key = PositionKey {
             market_id,
-            address: user.address(),
+            user_address: user.address(),
         };
         runner
             .runtime()
