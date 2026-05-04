@@ -5,6 +5,7 @@ use crate::{
 };
 use market::MarketId;
 use shared_types::{OrderId, OutcomeSide, Price, Side};
+use sov_bank::IntoPayable;
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -176,12 +177,26 @@ impl<S: Spec> OrderbookModule<S> {
             .add_position_shares(market_id, canonical_seller, 0, qty, state)
             .into_orderbook_err()?;
 
+        let market_module_id = self.market.id;
+
         // Release collateral from both sides (consumed into backing)
         let buyer_release = fill.price.cost(qty);
-        self.unlock_collateral(canonical_buyer, market_id, buyer_release, state)?;
+        self.unlock_collateral_to(
+            canonical_buyer,
+            Some(market_module_id.to_payable()),
+            market_id,
+            buyer_release,
+            state,
+        )?;
 
         let seller_release = fill.price.complement().cost(qty);
-        self.unlock_collateral(canonical_seller, market_id, seller_release, state)?;
+        self.unlock_collateral_to(
+            canonical_seller,
+            Some(market_module_id.to_payable()),
+            market_id,
+            seller_release,
+            state,
+        )?;
 
         Ok(())
     }
@@ -201,20 +216,25 @@ impl<S: Spec> OrderbookModule<S> {
     ) -> Result<(), OrderbookError> {
         let qty = fill.quantity;
 
-        // Unlock seller's YES shares using generic unlock helper
-        self.unlock_shares(canonical_seller, market_id, OutcomeSide::Yes, qty, state)?;
+        // Unlock and transfer YES shares: seller -> buyer.
+        self.unlock_shares_to(
+            canonical_seller,
+            Some(canonical_buyer),
+            market_id,
+            OutcomeSide::Yes,
+            qty,
+            state,
+        )?;
 
-        // Transfer YES: seller -> buyer.
-        self.market
-            .sub_position_shares(market_id, canonical_seller, qty, 0, state)
-            .into_orderbook_err()?;
-        self.market
-            .add_position_shares(market_id, canonical_buyer, qty, 0, state)
-            .into_orderbook_err()?;
-
-        // Release buyer's collateral (consumed as payment)
+        // Unlock and transfer collateral: buyer -> seller
         let buyer_release = fill.price.cost(qty);
-        self.unlock_collateral(canonical_buyer, market_id, buyer_release, state)?;
+        self.unlock_collateral_to(
+            canonical_buyer,
+            Some(canonical_seller),
+            market_id,
+            buyer_release,
+            state,
+        )?;
 
         Ok(())
     }
@@ -234,20 +254,25 @@ impl<S: Spec> OrderbookModule<S> {
     ) -> Result<(), OrderbookError> {
         let qty = fill.quantity;
 
-        // Unlock buyer's NO shares using generic unlock helper
-        self.unlock_shares(canonical_buyer, market_id, OutcomeSide::No, qty, state)?;
-
-        // Transfer NO: canonical buyer -> canonical seller.
-        self.market
-            .sub_position_shares(market_id, canonical_buyer, 0, qty, state)
-            .into_orderbook_err()?;
-        self.market
-            .add_position_shares(market_id, canonical_seller, 0, qty, state)
-            .into_orderbook_err()?;
+        // Unlock and transfer NO shares: canonical buyer -> canonical seller.
+        self.unlock_shares_to(
+            canonical_buyer,
+            Some(canonical_seller),
+            market_id,
+            OutcomeSide::No,
+            qty,
+            state,
+        )?;
 
         // Release canonical seller's collateral (they are BUY NO, consumed as payment)
         let seller_release = fill.price.complement().cost(qty);
-        self.unlock_collateral(canonical_seller, market_id, seller_release, state)?;
+        self.unlock_collateral_to(
+            canonical_seller,
+            Some(canonical_buyer),
+            market_id,
+            seller_release,
+            state,
+        )?;
 
         Ok(())
     }
@@ -268,8 +293,22 @@ impl<S: Spec> OrderbookModule<S> {
         let qty = fill.quantity;
 
         // Unreserve shares from both sides
-        self.unlock_shares(canonical_buyer, market_id, OutcomeSide::No, qty, state)?;
-        self.unlock_shares(canonical_seller, market_id, OutcomeSide::Yes, qty, state)?;
+        self.unlock_shares_to(
+            canonical_buyer,
+            None,
+            market_id,
+            OutcomeSide::No,
+            qty,
+            state,
+        )?;
+        self.unlock_shares_to(
+            canonical_seller,
+            None,
+            market_id,
+            OutcomeSide::Yes,
+            qty,
+            state,
+        )?;
 
         // Burn NO from canonical buyer and YES from canonical seller.
         self.market

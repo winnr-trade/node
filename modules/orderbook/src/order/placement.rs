@@ -98,12 +98,19 @@ impl<S: Spec> OrderbookModule<S> {
             Side::Bid => {
                 // BUY order: unlock collateral
                 let locked = order.locked_collateral();
-                self.unlock_collateral(&order.owner, order.market_id, locked, state)?;
+                self.unlock_collateral_to(
+                    &order.owner,
+                    Some(&order.owner),
+                    order.market_id,
+                    locked,
+                    state,
+                )?;
             }
             Side::Ask => {
                 // SELL order: unreserve shares
-                self.unlock_shares(
+                self.unlock_shares_to(
                     &order.owner,
+                    None,
                     order.market_id,
                     order.outcome,
                     unfilled,
@@ -230,7 +237,7 @@ impl<S: Spec> OrderbookModule<S> {
             }
             Side::Ask => {
                 // SELL order: reserve shares of the outcome being sold
-                self.lock_shares(sender, market_id, outcome, quantity, state)?;
+                self.lock_shares_from(sender, market_id, outcome, quantity, state)?;
             }
         }
 
@@ -276,8 +283,9 @@ impl<S: Spec> OrderbookModule<S> {
                         canonical_order.required_collateral(match_result.remaining);
 
                     if remaining_collateral > required_remaining_collateral {
-                        self.unlock_collateral(
+                        self.unlock_collateral_to(
                             sender,
+                            Some(sender),
                             market_id,
                             remaining_collateral - required_remaining_collateral,
                             state,
@@ -288,11 +296,23 @@ impl<S: Spec> OrderbookModule<S> {
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
                     if remaining_collateral > 0 {
-                        self.unlock_collateral(sender, market_id, remaining_collateral, state)?;
+                        self.unlock_collateral_to(
+                            sender,
+                            Some(sender),
+                            market_id,
+                            remaining_collateral,
+                            state,
+                        )?;
                     }
                 } else if match_result.remaining > 0 {
                     // Not posted (IOC/Market) with no fills
-                    self.unlock_collateral(sender, market_id, total_required_collateral, state)?;
+                    self.unlock_collateral_to(
+                        sender,
+                        Some(sender),
+                        market_id,
+                        total_required_collateral,
+                        state,
+                    )?;
                 }
             }
             Side::Ask => {
@@ -310,7 +330,7 @@ impl<S: Spec> OrderbookModule<S> {
                 } else if match_result.remaining > 0 {
                     // IOC/Market/no fills: unlock unfilled shares
                     let to_unreserve = match_result.remaining;
-                    self.unlock_shares(sender, market_id, outcome, to_unreserve, state)?;
+                    self.unlock_shares_to(sender, None, market_id, outcome, to_unreserve, state)?;
                 }
             }
         }
