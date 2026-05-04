@@ -4,6 +4,7 @@ use crate::{RT, S};
 use market::ResolutionData;
 use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
 use shared_types::{MarketId, Outcome};
+use sov_bank::utils::TokenHolder;
 use sov_bank::TokenId;
 use sov_modules_api::da::Time;
 use sov_modules_api::SafeString;
@@ -134,7 +135,7 @@ pub fn get_position(
     runner.query_state(|state| {
         let key = PositionKey {
             market_id,
-            user_address: user.address(),
+            owner: TokenHolder::User(user.address()),
         };
         runner
             .runtime()

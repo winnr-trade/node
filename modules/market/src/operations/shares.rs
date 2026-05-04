@@ -1,7 +1,7 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule};
 use shared_types::{MarketId, MarketStatus};
-use sov_bank::{Amount, Coins, IntoPayable};
+use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
 
@@ -149,6 +149,67 @@ impl<S: Spec> MarketModule<S> {
         );
 
         Ok(())
+    }
+
+    /// Transfer shares from an explicit owner to another owner.
+    pub(crate) fn transfer_shares_from(
+        &mut self,
+        market_id: MarketId,
+        from: impl Payable<S>,
+        to: impl Payable<S>,
+        yes_amount: u64,
+        no_amount: u64,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
+        if yes_amount == 0 && no_amount == 0 {
+            return Err(MarketError::ZeroAmount);
+        }
+
+        let market = self
+            .markets
+            .get(&market_id, state)
+            .into_market_err()?
+            .ok_or(MarketError::MarketNotFound { market_id })?;
+
+        if market.outcome.is_some() {
+            return Err(MarketError::MarketAlreadyResolved { market_id });
+        }
+
+        let from_owner = from.as_token_holder().to_owned();
+        let to_owner = to.as_token_holder().to_owned();
+
+        if from_owner == to_owner {
+            return Ok(());
+        }
+
+        self.sub_position_shares_for_owner(market_id, &from_owner, yes_amount, no_amount, state)?;
+        self.add_position_shares_for_owner(market_id, &to_owner, yes_amount, no_amount, state)?;
+
+        self.emit_event(
+            state,
+            Event::SharesTransferred {
+                market_id,
+                from: from_owner.to_string(),
+                to: to_owner.to_string(),
+                yes_amount,
+                no_amount,
+            },
+        );
+
+        Ok(())
+    }
+
+    /// Transfer shares from the tx sender to another holder.
+    pub(crate) fn transfer_shares(
+        &mut self,
+        market_id: MarketId,
+        to: S::Address,
+        yes_amount: u64,
+        no_amount: u64,
+        ctx: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
+        self.transfer_shares_from(market_id, ctx.sender(), &to, yes_amount, no_amount, state)
     }
 
     /// Get a market and verify it's active

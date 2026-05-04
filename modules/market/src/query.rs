@@ -1,5 +1,6 @@
 use axum::routing::get;
 use shared_types::MarketId;
+use sov_bank::utils::TokenHolder;
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
 use sov_modules_api::prelude::{axum, serde_yaml, UnwrapInfallible};
 use sov_modules_api::rest::utils::{errors, ApiResult, Path, Query};
@@ -88,7 +89,7 @@ impl<S: Spec> MarketModule<S> {
     ) -> ApiResult<Position> {
         let position_id = PositionKey {
             market_id: params.market_id,
-            user_address: params.user_address,
+            owner: TokenHolder::User(params.user_address),
         };
 
         let position = state
@@ -137,7 +138,7 @@ impl<S: Spec> MarketModule<S> {
 
             let position_key = PositionKey {
                 market_id,
-                user_address: params.user_address.clone(),
+                owner: TokenHolder::User(params.user_address.clone()),
             };
             let position = match state
                 .positions

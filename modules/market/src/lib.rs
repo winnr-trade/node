@@ -134,6 +134,13 @@ impl<S: Spec> Module for MarketModule<S> {
                 self.redeem_shares(market_id, amount, ctx, state)
             }
 
+            CallMessage::TransferShares {
+                market_id,
+                to,
+                yes_amount,
+                no_amount,
+            } => self.transfer_shares(market_id, to, yes_amount, no_amount, ctx, state),
+
             CallMessage::ResolveMarket { market_id, data } => {
                 self.resolve_market(market_id, data, ctx, state)
             }

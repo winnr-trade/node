@@ -18,6 +18,7 @@ mod mint_shares;
 mod redeem_shares;
 mod resolve_market;
 mod resolver_variants;
+mod transfer_shares;
 mod utils;
 
 generate_optimistic_runtime!(

@@ -4,6 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::MarketId;
+use sov_bank::utils::TokenHolder;
 use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{HexHash, SafeString, Spec};
@@ -122,17 +123,19 @@ impl Position {
 }
 
 #[derive(
-    Clone, Debug, PartialEq, Eq, Hash, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+    Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct PositionKey<S: Spec> {
     pub market_id: MarketId,
-    pub user_address: S::Address,
+    pub owner: TokenHolder<S>,
 }
 
 impl<S: Spec> core::fmt::Display for PositionKey<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         // Serialize both fields in a parseable format
-        write!(f, "{}:{}", self.market_id.0, self.user_address)
+        let owner = serde_json::to_string(&self.owner).map_err(|_| core::fmt::Error)?;
+        write!(f, "{}:{}", self.market_id.0, owner)
     }
 }
 
@@ -141,12 +144,16 @@ impl<S: Spec> FromStr for PositionKey<S> {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Parse back from the Display format
-        let parts: Vec<&str> = s.split(':').collect();
+        let parts: Vec<&str> = s.splitn(2, ':').collect();
+        if parts.len() != 2 {
+            return Err(anyhow::anyhow!("invalid PositionKey format"));
+        }
+
         let market_id = MarketId(u64::from_str(parts[0])?);
-        let address = S::Address::from_str(parts[1]).map_err(|e| anyhow::anyhow!("{:?}", e))?;
+        let owner = serde_json::from_str(parts[1])?;
         Ok(PositionKey {
             market_id,
-            user_address: address,
+            owner,
         })
     }
 }

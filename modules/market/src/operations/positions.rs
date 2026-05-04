@@ -1,14 +1,28 @@
 use crate::error::IntoMarketError;
 use crate::{MarketError, MarketModule, PositionKey};
 use shared_types::{MarketId, MarketStatus};
+use sov_bank::utils::TokenHolder;
 use sov_modules_api::{Spec, TxState};
 
 impl<S: Spec> MarketModule<S> {
     /// Add shares to a user's position and keep the user->markets index in sync.
-    pub fn add_position_shares(
+    pub(crate) fn add_position_shares(
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
+        yes_add: u64,
+        no_add: u64,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
+        let owner = TokenHolder::User(user_address.clone());
+        self.add_position_shares_for_owner(market_id, &owner, yes_add, no_add, state)
+    }
+
+    /// Add shares to an arbitrary owner position.
+    pub(crate) fn add_position_shares_for_owner(
+        &mut self,
+        market_id: MarketId,
+        owner: &TokenHolder<S>,
         yes_add: u64,
         no_add: u64,
         state: &mut impl TxState<S>,
@@ -19,7 +33,7 @@ impl<S: Spec> MarketModule<S> {
 
         let position_key = PositionKey {
             market_id,
-            user_address: user_address.clone(),
+            owner: owner.clone(),
         };
         let mut position = self
             .positions
@@ -39,16 +53,31 @@ impl<S: Spec> MarketModule<S> {
         self.positions
             .set(&position_key, &position, state)
             .into_market_err()?;
-        self.add_user_active_market(user_address, market_id, state)?;
+        if let TokenHolder::User(user_address) = owner {
+            self.add_user_active_market(user_address, market_id, state)?;
+        }
 
         Ok(())
     }
 
     /// Subtract shares from a user's position and remove index membership once empty.
-    pub fn sub_position_shares(
+    pub(crate) fn sub_position_shares(
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
+        yes_sub: u64,
+        no_sub: u64,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
+        let owner = TokenHolder::User(user_address.clone());
+        self.sub_position_shares_for_owner(market_id, &owner, yes_sub, no_sub, state)
+    }
+
+    /// Subtract shares from an arbitrary owner position.
+    pub(crate) fn sub_position_shares_for_owner(
+        &mut self,
+        market_id: MarketId,
+        owner: &TokenHolder<S>,
         yes_sub: u64,
         no_sub: u64,
         state: &mut impl TxState<S>,
@@ -59,7 +88,7 @@ impl<S: Spec> MarketModule<S> {
 
         let position_key = PositionKey {
             market_id,
-            user_address: user_address.clone(),
+            owner: owner.clone(),
         };
         let mut position = self
             .positions
@@ -82,12 +111,16 @@ impl<S: Spec> MarketModule<S> {
             self.positions
                 .remove(&position_key, state)
                 .into_market_err()?;
-            self.remove_user_active_market(user_address, market_id, state)?;
+            if let TokenHolder::User(user_address) = owner {
+                self.remove_user_active_market(user_address, market_id, state)?;
+            }
         } else {
             self.positions
                 .set(&position_key, &position, state)
                 .into_market_err()?;
-            self.add_user_active_market(user_address, market_id, state)?;
+            if let TokenHolder::User(user_address) = owner {
+                self.add_user_active_market(user_address, market_id, state)?;
+            }
         }
 
         Ok(())
@@ -100,14 +133,30 @@ impl<S: Spec> MarketModule<S> {
         user_address: &S::Address,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
+        let owner = TokenHolder::User(user_address.clone());
+        self.remove_position_for_owner(market_id, &owner, state)
+    }
+
+    /// Remove an arbitrary owner position and index membership when applicable.
+    pub(crate) fn remove_position_for_owner(
+        &mut self,
+        market_id: MarketId,
+        owner: &TokenHolder<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
         let position_key = PositionKey {
             market_id,
-            user_address: user_address.clone(),
+            owner: owner.clone(),
         };
         self.positions
             .remove(&position_key, state)
             .into_market_err()?;
-        self.remove_user_active_market(user_address, market_id, state)
+
+        if let TokenHolder::User(user_address) = owner {
+            self.remove_user_active_market(user_address, market_id, state)?;
+        }
+
+        Ok(())
     }
 
     /// Bounded cleanup for a single user's market index.
@@ -221,10 +270,8 @@ impl<S: Spec> MarketModule<S> {
         now_ms: u64,
         state: &mut impl TxState<S>,
     ) -> Result<bool, MarketError> {
-        let position_key = PositionKey {
-            market_id,
-            user_address: user_address.clone(),
-        };
+        let owner = TokenHolder::User(user_address.clone());
+        let position_key = PositionKey { market_id, owner };
 
         let Some(position) = self.positions.get(&position_key, state).into_market_err()? else {
             return Ok(true);

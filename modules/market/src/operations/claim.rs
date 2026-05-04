@@ -1,6 +1,7 @@
 use crate::error::IntoMarketError;
 use crate::{Event, MarketError, MarketModule, PositionKey};
 use shared_types::{MarketId, Outcome};
+use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
@@ -27,7 +28,7 @@ impl<S: Spec> MarketModule<S> {
         // Get user position
         let position_key: PositionKey<S> = PositionKey {
             market_id,
-            user_address: ctx.sender().clone(),
+            owner: TokenHolder::User(ctx.sender().clone()),
         };
         let position = self
             .positions

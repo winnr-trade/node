@@ -53,6 +53,15 @@ pub enum Event {
         amount: u64,
     },
 
+    /// Shares were transferred between holders.
+    SharesTransferred {
+        market_id: MarketId,
+        from: String,
+        to: String,
+        yes_amount: u64,
+        no_amount: u64,
+    },
+
     /// Market was resolved.
     MarketResolved {
         market_id: MarketId,
