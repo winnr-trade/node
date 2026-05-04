@@ -5,7 +5,8 @@ use crate::{
 };
 use market::MarketId;
 use shared_types::{OrderId, OutcomeSide, Price, Side};
-use sov_bank::IntoPayable;
+use sov_bank::utils::TokenHolder;
+use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -136,67 +137,68 @@ impl<S: Spec> OrderbookModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
         let qty = fill.quantity;
-
-        // Update market supply totals
-        let mut market = self
-            .market
-            .markets
-            .get(&market_id, state)
-            .into_orderbook_err()?
-            .ok_or(OrderbookError::MarketNotFound { market_id })?;
-
-        market.total_shares = market
-            .total_shares
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in total_shares")))?;
-        self.market
-            .markets
-            .set(&market_id, &market, state)
-            .into_orderbook_err()?;
-
-        // Update market collateral backing (1 unit per pair)
-        let current_collateral = self
-            .market
-            .market_collateral
-            .get(&market_id, state)
-            .into_orderbook_err()?
-            .unwrap_or(0);
-        let new_collateral = current_collateral
-            .checked_add(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in market_collateral")))?;
-        self.market
-            .market_collateral
-            .set(&market_id, &new_collateral, state)
-            .into_orderbook_err()?;
-
-        // Allocate YES to buyer and NO to seller.
-        self.market
-            .add_position_shares(market_id, canonical_buyer, qty, 0, state)
-            .into_orderbook_err()?;
-        self.market
-            .add_position_shares(market_id, canonical_seller, 0, qty, state)
-            .into_orderbook_err()?;
-
-        let market_module_id = self.market.id;
-
-        // Release collateral from both sides (consumed into backing)
+        // Release collateral from both sides into orderbook custody accounting.
+        // Use a residual split so both legs always sum exactly to qty.
         let buyer_release = fill.price.cost(qty);
+        let seller_release = qty.checked_sub(buyer_release).ok_or_else(|| {
+            OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
+        })?;
+
+        let total_release = buyer_release.checked_add(seller_release).ok_or_else(|| {
+            OrderbookError::Any(anyhow::anyhow!("Overflow in MintPair collateral split"))
+        })?;
+        if total_release != qty {
+            return Err(OrderbookError::Any(anyhow::anyhow!(
+                "MintPair collateral split mismatch: buyer={} seller={} total={} expected={}",
+                buyer_release,
+                seller_release,
+                total_release,
+                qty
+            )));
+        }
+
         self.unlock_collateral_to(
             canonical_buyer,
-            Some(market_module_id.to_payable()),
+            None::<TokenHolder<S>>,
             market_id,
             buyer_release,
             state,
         )?;
 
-        let seller_release = fill.price.complement().cost(qty);
         self.unlock_collateral_to(
             canonical_seller,
-            Some(market_module_id.to_payable()),
+            None::<TokenHolder<S>>,
             market_id,
             seller_release,
             state,
         )?;
+
+        // Mint pair from orderbook custody into orderbook holder.
+        self.market
+            .mint_shares_to(market_id, qty, self.id.to_payable(), state)
+            .into_orderbook_err()?;
+
+        // Distribute minted shares to counterparties.
+        self.market
+            .transfer_shares_from(
+                market_id,
+                self.id.to_payable(),
+                canonical_buyer,
+                qty,
+                0,
+                state,
+            )
+            .into_orderbook_err()?;
+        self.market
+            .transfer_shares_from(
+                market_id,
+                self.id.to_payable(),
+                canonical_seller,
+                0,
+                qty,
+                state,
+            )
+            .into_orderbook_err()?;
 
         Ok(())
     }
@@ -292,6 +294,13 @@ impl<S: Spec> OrderbookModule<S> {
     ) -> Result<(), OrderbookError> {
         let qty = fill.quantity;
 
+        let market = self
+            .market
+            .markets
+            .get(&market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound { market_id })?;
+
         // Unreserve shares from both sides
         self.unlock_shares_to(
             canonical_buyer,
@@ -310,52 +319,71 @@ impl<S: Spec> OrderbookModule<S> {
             state,
         )?;
 
-        // Burn NO from canonical buyer and YES from canonical seller.
+        // Move the pair into orderbook custody, then burn through market API.
         self.market
-            .sub_position_shares(market_id, canonical_buyer, 0, qty, state)
+            .transfer_shares_from(
+                market_id,
+                canonical_buyer,
+                self.id.to_payable(),
+                0,
+                qty,
+                state,
+            )
             .into_orderbook_err()?;
         self.market
-            .sub_position_shares(market_id, canonical_seller, qty, 0, state)
+            .transfer_shares_from(
+                market_id,
+                canonical_seller,
+                self.id.to_payable(),
+                qty,
+                0,
+                state,
+            )
             .into_orderbook_err()?;
-
-        // Decrease market supply totals
-        let mut market = self
-            .market
-            .markets
-            .get(&market_id, state)
-            .into_orderbook_err()?
-            .ok_or(OrderbookError::MarketNotFound { market_id })?;
-
-        market.total_shares = market
-            .total_shares
-            .checked_sub(qty)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Underflow in total_shares")))?;
         self.market
-            .markets
-            .set(&market_id, &market, state)
+            .burn_shares_from(market_id, qty, self.id.to_payable(), state)
             .into_orderbook_err()?;
 
-        // Release backing collateral
-        let current_collateral = self
-            .market
-            .market_collateral
-            .get(&market_id, state)
-            .into_orderbook_err()?
-            .unwrap_or(0);
-        let new_collateral = current_collateral.checked_sub(qty).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in market_collateral"))
+        // Distribute redeemed collateral according to execution price.
+        let yes_payout = fill.price.cost(qty);
+        let no_payout = qty.checked_sub(yes_payout).ok_or_else(|| {
+            OrderbookError::Any(anyhow::anyhow!("Underflow in MergePair collateral split"))
         })?;
-        if new_collateral == 0 {
-            self.market
-                .market_collateral
-                .remove(&market_id, state)
-                .into_orderbook_err()?;
-        } else {
-            self.market
-                .market_collateral
-                .set(&market_id, &new_collateral, state)
-                .into_orderbook_err()?;
+        let total_payout = yes_payout.checked_add(no_payout).ok_or_else(|| {
+            OrderbookError::Any(anyhow::anyhow!("Overflow in MergePair collateral split"))
+        })?;
+        if total_payout != qty {
+            return Err(OrderbookError::Any(anyhow::anyhow!(
+                "MergePair collateral split mismatch: yes={} no={} total={} expected={}",
+                yes_payout,
+                no_payout,
+                total_payout,
+                qty
+            )));
         }
+
+        self.bank
+            .transfer_from(
+                self.id.to_payable(),
+                canonical_seller,
+                Coins {
+                    amount: Amount(yes_payout as u128),
+                    token_id: market.collateral_token,
+                },
+                state,
+            )
+            .into_orderbook_err()?;
+        self.bank
+            .transfer_from(
+                self.id.to_payable(),
+                canonical_buyer,
+                Coins {
+                    amount: Amount(no_payout as u128),
+                    token_id: market.collateral_token,
+                },
+                state,
+            )
+            .into_orderbook_err()?;
 
         Ok(())
     }

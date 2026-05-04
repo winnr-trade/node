@@ -2,6 +2,7 @@ use crate::error::IntoOrderbookError;
 use crate::{OrderbookError, OrderbookModule, UserMarketKey};
 use market::{MarketId, PositionKey};
 use shared_types::OutcomeSide;
+use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Spec, TxState};
 
@@ -139,7 +140,7 @@ impl<S: Spec> OrderbookModule<S> {
     ) -> Result<(), OrderbookError> {
         let position_key = PositionKey {
             market_id,
-            user_address: owner.clone(),
+            owner: TokenHolder::User(owner.clone()),
         };
         let position = self
             .market
@@ -256,11 +257,9 @@ impl<S: Spec> OrderbookModule<S> {
 
         if let Some(recipient) = recipient {
             self.market
-                .sub_position_shares(market_id, owner, delta_shares_yes, delta_shares_no, state)
-                .into_orderbook_err()?;
-            self.market
-                .add_position_shares(
+                .transfer_shares_from(
                     market_id,
+                    owner,
                     recipient,
                     delta_shares_yes,
                     delta_shares_no,

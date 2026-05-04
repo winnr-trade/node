@@ -131,7 +131,7 @@ impl<S: Spec> Module for MarketModule<S> {
             }
 
             CallMessage::RedeemShares { market_id, amount } => {
-                self.redeem_shares(market_id, amount, ctx, state)
+                self.burn_shares(market_id, amount, ctx, state)
             }
 
             CallMessage::TransferShares {

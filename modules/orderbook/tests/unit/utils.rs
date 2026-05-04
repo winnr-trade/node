@@ -6,6 +6,7 @@ use orderbook::{
     MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey, UserMarketKey,
 };
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
+use sov_bank::utils::TokenHolder;
 use sov_bank::TokenId;
 use sov_modules_api::SafeString;
 use sov_modules_api::TxEffect;
@@ -414,7 +415,7 @@ pub fn get_locked_collateral(
 pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
     let key = market::PositionKey::<S> {
         market_id,
-        user_address: user.address(),
+        owner: TokenHolder::User(user.address()),
     };
     runner.query_state(|state| {
         runner
@@ -432,7 +433,7 @@ pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id:
 pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: MarketId) -> u64 {
     let key = market::PositionKey::<S> {
         market_id,
-        user_address: user.address(),
+        owner: TokenHolder::User(user.address()),
     };
     runner.query_state(|state| {
         runner

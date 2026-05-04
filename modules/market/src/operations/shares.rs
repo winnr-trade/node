@@ -6,24 +6,25 @@ use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
 
 impl<S: Spec> MarketModule<S> {
-    /// Mint YES and NO shares by depositing collateral
-    pub(crate) fn mint_shares(
+    /// Mint YES and NO shares by depositing collateral from the same payable holder.
+    pub fn mint_shares_to(
         &mut self,
         market_id: MarketId,
         amount: u64,
-        ctx: &Context<S>,
+        to: impl Payable<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         if amount == 0 {
             return Err(MarketError::ZeroAmount);
         }
 
+        let owner = to.as_token_holder().to_owned();
         let mut market = self.get_active_market(market_id, state)?;
 
-        // Transfer collateral from user
+        // Transfer collateral from the holder into market module custody.
         self.bank
             .transfer_from(
-                ctx.sender(),
+                to,
                 self.id.to_payable(),
                 Coins {
                     amount: Amount(amount as u128),
@@ -33,7 +34,7 @@ impl<S: Spec> MarketModule<S> {
             )
             .into_market_err()?;
 
-        // Update market totals
+        // Update market totals.
         market.total_shares = market
             .total_shares
             .checked_add(amount)
@@ -42,7 +43,7 @@ impl<S: Spec> MarketModule<S> {
             .set(&market_id, &market, state)
             .into_market_err()?;
 
-        // Update collateral tracking
+        // Update collateral tracking.
         let current_collateral = self
             .market_collateral
             .get(&market_id, state)
@@ -52,12 +53,12 @@ impl<S: Spec> MarketModule<S> {
             .set(&market_id, &(current_collateral + amount), state)
             .into_market_err()?;
 
-        // Update user position and accessory index.
-        self.add_position_shares(market_id, ctx.sender(), amount, amount, state)?;
+        // Update owner position and accessory index for users.
+        self.add_position_shares_for_owner(market_id, &owner, amount, amount, state)?;
 
         info!(
             market_id = %market_id,
-            user = %ctx.sender(),
+            user = %owner,
             amount = amount,
             "Shares minted"
         );
@@ -66,7 +67,7 @@ impl<S: Spec> MarketModule<S> {
             state,
             Event::SharesMinted {
                 market_id,
-                user: ctx.sender().to_string(),
+                user: owner.to_string(),
                 amount,
             },
         );
@@ -74,17 +75,30 @@ impl<S: Spec> MarketModule<S> {
         Ok(())
     }
 
-    /// Redeem pairs of YES and NO shares for collateral
-    pub(crate) fn redeem_shares(
+    /// Mint YES and NO shares by depositing collateral
+    pub(crate) fn mint_shares(
         &mut self,
         market_id: MarketId,
         amount: u64,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
+        self.mint_shares_to(market_id, amount, ctx.sender(), state)
+    }
+
+    /// Burn YES and NO share pairs and redeem collateral to the same payable holder.
+    pub fn burn_shares_from(
+        &mut self,
+        market_id: MarketId,
+        amount: u64,
+        from: impl Payable<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
         if amount == 0 {
             return Err(MarketError::ZeroAmount);
         }
+
+        let owner = from.as_token_holder().to_owned();
 
         let mut market = self
             .markets
@@ -97,7 +111,7 @@ impl<S: Spec> MarketModule<S> {
         }
 
         // Burn shares and keep accessory index in sync.
-        self.sub_position_shares(market_id, ctx.sender(), amount, amount, state)?;
+        self.sub_position_shares_for_owner(market_id, &owner, amount, amount, state)?;
 
         // Update market totals
         market.total_shares -= amount;
@@ -119,11 +133,11 @@ impl<S: Spec> MarketModule<S> {
             )
             .into_market_err()?;
 
-        // Transfer collateral back to user
+        // Transfer collateral back to holder.
         self.bank
             .transfer_from(
                 self.id.to_payable(),
-                ctx.sender(),
+                from,
                 Coins {
                     amount: Amount(amount as u128),
                     token_id: market.collateral_token,
@@ -134,7 +148,7 @@ impl<S: Spec> MarketModule<S> {
 
         info!(
             market_id = %market_id,
-            user = %ctx.sender(),
+            user = %owner,
             amount = amount,
             "Shares redeemed"
         );
@@ -143,7 +157,7 @@ impl<S: Spec> MarketModule<S> {
             state,
             Event::SharesRedeemed {
                 market_id,
-                user: ctx.sender().to_string(),
+                user: owner.to_string(),
                 amount,
             },
         );
@@ -151,8 +165,19 @@ impl<S: Spec> MarketModule<S> {
         Ok(())
     }
 
+    /// Burn YES and NO share pairs and redeem collateral to the tx sender.
+    pub(crate) fn burn_shares(
+        &mut self,
+        market_id: MarketId,
+        amount: u64,
+        ctx: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), MarketError> {
+        self.burn_shares_from(market_id, amount, ctx.sender(), state)
+    }
+
     /// Transfer shares from an explicit owner to another owner.
-    pub(crate) fn transfer_shares_from(
+    pub fn transfer_shares_from(
         &mut self,
         market_id: MarketId,
         from: impl Payable<S>,
