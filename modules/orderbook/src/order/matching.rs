@@ -4,7 +4,8 @@ use crate::{
     SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, Price, Side, TokenIdExt};
+use sov_bank::TokenId;
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -21,7 +22,7 @@ impl<S: Spec> OrderbookModule<S> {
         quantity: u64,
         taker: &S::Address,
         order_type: OrderType,
-        collateral_decimals: u8,
+        collateral_token: &TokenId,
         state: &mut impl TxState<S>,
     ) -> Result<MatchResult, OrderbookError> {
         let opposite_side = side.opposite();
@@ -83,7 +84,7 @@ impl<S: Spec> OrderbookModule<S> {
 
                 let fill_qty = remaining.min(maker_order.remaining_quantity);
                 let fill_price = maker_order.canonical_price;
-                let notional = fill_price.cost(fill_qty, collateral_decimals);
+                let notional = fill_price.cost(fill_qty, collateral_token);
 
                 fills.push(Fill {
                     order_id: maker_order_id,

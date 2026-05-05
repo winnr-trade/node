@@ -1,10 +1,10 @@
 use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
-use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule, TokenIdExt};
+use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
 use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, TokenIdExt};
 use shielded_pool::Proof;
 use sov_bank::TokenId;
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
@@ -102,9 +102,10 @@ impl<S: Spec> OrderbookModule<S> {
                     .markets
                     .get(&order.market_id, state)
                     .into_orderbook_err()?
-                    .ok_or(OrderbookError::MarketNotFound { market_id: order.market_id })?;
-                let decimals = market.collateral_token.get_decimals();
-                let locked = order.locked_collateral(decimals);
+                    .ok_or(OrderbookError::MarketNotFound {
+                        market_id: order.market_id,
+                    })?;
+                let locked = order.locked_collateral(&market.collateral_token);
                 self.unlock_collateral_to(
                     &order.owner,
                     Some(&order.owner),
@@ -202,7 +203,7 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
-        let collateral_decimals = market.collateral_token.get_decimals();
+        let collateral_token = market.collateral_token;
 
         // Normalize to canonical YES-space
         let canonical_order = CanonicalOrder::normalize(outcome, side, price);
@@ -232,7 +233,7 @@ impl<S: Spec> OrderbookModule<S> {
             quantity,
             sender,
             order_type,
-            collateral_decimals,
+            &collateral_token,
             state,
         )?;
 
@@ -250,7 +251,8 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY order: lock collateral at limit price
-                let required_collateral = canonical_order.required_collateral(quantity, collateral_decimals);
+                let required_collateral =
+                    canonical_order.required_collateral(quantity, &collateral_token);
                 self.lock_collateral(sender, market_id, required_collateral, state)?;
             }
             Side::Ask => {
@@ -274,13 +276,14 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY: refund price improvement collateral
-                let total_required_collateral = canonical_order.required_collateral(quantity, collateral_decimals);
+                let total_required_collateral =
+                    canonical_order.required_collateral(quantity, &collateral_token);
                 let total_used_collateral: u64 = match_result
                     .fills
                     .iter()
                     .map(|f| match canonical_order.side {
-                        Side::Bid => f.price.cost(f.quantity, collateral_decimals),
-                        Side::Ask => f.price.complement().cost(f.quantity, collateral_decimals),
+                        Side::Bid => f.price.cost(f.quantity, &collateral_token),
+                        Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
                     })
                     .sum();
 
@@ -297,8 +300,8 @@ impl<S: Spec> OrderbookModule<S> {
                     // Refund excess collateral (case when when better prices were matched) after partial fills
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
-                    let required_remaining_collateral =
-                        canonical_order.required_collateral(match_result.remaining, collateral_decimals);
+                    let required_remaining_collateral = canonical_order
+                        .required_collateral(match_result.remaining, &collateral_token);
 
                     if remaining_collateral > required_remaining_collateral {
                         self.unlock_collateral_to(

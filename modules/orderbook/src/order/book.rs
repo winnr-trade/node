@@ -1,10 +1,10 @@
 use crate::error::IntoOrderbookError;
 use crate::{
     Event, Fill, MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey,
-    SettlementKind, TokenIdExt,
+    SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OutcomeSide, Price, Side, TokenIdExt};
 use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{EventEmitter, Spec, TxState};
@@ -144,15 +144,15 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
         let qty = fill.quantity;
-        let decimals = market.collateral_token.get_decimals();
-        let scale = 10u64.pow(decimals as u32);
+        let token = &market.collateral_token;
+        let scale = 10u64.pow(token.get_decimals() as u32);
         let qty_scaled = qty.checked_mul(scale).ok_or_else(|| {
             OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling"))
         })?;
 
         // Release collateral from both sides into orderbook custody accounting.
         // Use a residual split so both legs always sum exactly to qty_scaled.
-        let buyer_release = fill.price.cost(qty, decimals);
+        let buyer_release = fill.price.cost(qty, token);
         let seller_release = qty_scaled.checked_sub(buyer_release).ok_or_else(|| {
             OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
         })?;
@@ -237,7 +237,7 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
         let qty = fill.quantity;
-        let decimals = market.collateral_token.get_decimals();
+        let token = &market.collateral_token;
 
         // Unlock and transfer YES shares: seller -> buyer.
         self.unlock_shares_to(
@@ -250,7 +250,7 @@ impl<S: Spec> OrderbookModule<S> {
         )?;
 
         // Unlock and transfer collateral: buyer -> seller
-        let buyer_release = fill.price.cost(qty, decimals);
+        let buyer_release = fill.price.cost(qty, token);
         self.unlock_collateral_to(
             canonical_buyer,
             Some(canonical_seller),
@@ -283,7 +283,7 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
         let qty = fill.quantity;
-        let decimals = market.collateral_token.get_decimals();
+        let token = &market.collateral_token;
 
         // Unlock and transfer NO shares: canonical buyer -> canonical seller.
         self.unlock_shares_to(
@@ -296,7 +296,7 @@ impl<S: Spec> OrderbookModule<S> {
         )?;
 
         // Release canonical seller's collateral (they are BUY NO, consumed as payment)
-        let seller_release = fill.price.complement().cost(qty, decimals);
+        let seller_release = fill.price.complement().cost(qty, token);
         self.unlock_collateral_to(
             canonical_seller,
             Some(canonical_buyer),
@@ -330,8 +330,8 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
-        let decimals = market.collateral_token.get_decimals();
-        let scale = 10u64.pow(decimals as u32);
+        let token = &market.collateral_token;
+        let scale = 10u64.pow(token.get_decimals() as u32);
         let qty_scaled = qty.checked_mul(scale).ok_or_else(|| {
             OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling"))
         })?;
@@ -380,7 +380,7 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?;
 
         // Distribute redeemed collateral according to execution price.
-        let yes_payout = fill.price.cost(qty, decimals);
+        let yes_payout = fill.price.cost(qty, token);
         let no_payout = qty_scaled.checked_sub(yes_payout).ok_or_else(|| {
             OrderbookError::Any(anyhow::anyhow!("Underflow in MergePair collateral split"))
         })?;

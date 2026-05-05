@@ -4,11 +4,28 @@
 //! to avoid circular dependencies.
 
 use schemars::JsonSchema;
+use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use std::{
     fmt::{self, Display, Formatter},
     str::FromStr,
 };
+
+// ============================================================================
+// TOKEN EXTENSIONS
+// ============================================================================
+
+/// Extension trait to extract decimals from a TokenId hash.
+/// Decimals are stored at byte [31] of the 32-byte hash.
+pub trait TokenIdExt {
+    fn get_decimals(&self) -> u8;
+}
+
+impl TokenIdExt for TokenId {
+    fn get_decimals(&self) -> u8 {
+        self.as_ref()[31]
+    }
+}
 
 // ============================================================================
 // MARKET TYPES
@@ -158,18 +175,17 @@ impl Price {
     ///
     /// E.g., 100 shares at price 6500 (0.65) with 6 decimals (USDC) = 65,000,000 base units.
     /// Formula: (quantity * price_bps * 10^decimals) / BASIS
-    pub fn cost(&self, quantity: u64, decimals: u8) -> u64 {
-        // Use u128 to avoid overflow
-        let scale = 10u128.pow(decimals as u32);
+    pub fn cost(&self, quantity: u64, token: &TokenId) -> u64 {
+        let scale = 10u128.pow(token.get_decimals() as u32);
         ((self.0 as u128 * quantity as u128 * scale) / Self::BASIS as u128) as u64
     }
 
     /// Calculate quantity affordable with given collateral in base units.
-    pub fn quantity_for_collateral(&self, collateral: u64, decimals: u8) -> u64 {
+    pub fn quantity_for_collateral(&self, collateral: u64, token: &TokenId) -> u64 {
         if self.0 == 0 {
             return 0;
         }
-        let scale = 10u128.pow(decimals as u32);
+        let scale = 10u128.pow(token.get_decimals() as u32);
         ((collateral as u128 * Self::BASIS as u128) / (self.0 as u128 * scale)) as u64
     }
 }
@@ -286,12 +302,15 @@ mod tests {
     #[test]
     fn test_price_cost() {
         let price = Price(6500); // 65%
+        let mut token_bytes = [0u8; 32];
+        token_bytes[31] = 6; // 6 decimals
+        let token = TokenId::from(token_bytes);
 
         // 100 shares at 0.65 with 6 decimals = 65,000,000 base units
-        assert_eq!(price.cost(100, 6), 65_000_000);
+        assert_eq!(price.cost(100, &token), 65_000_000);
 
         // 1000 shares at 0.65 with 6 decimals = 650,000,000 base units
-        assert_eq!(price.cost(1000, 6), 650_000_000);
+        assert_eq!(price.cost(1000, &token), 650_000_000);
     }
 
     #[test]

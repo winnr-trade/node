@@ -6,7 +6,8 @@
 //!   - BUY NO @ p  → SELL YES @ (BASIS - p)
 //!   - SELL NO @ p → BUY YES @ (BASIS - p)
 
-use shared_types::{OutcomeSide, Price, Side};
+use shared_types::{OutcomeSide, Price, Side, TokenIdExt};
+use sov_bank::TokenId;
 
 /// Canonical representation of an order in YES-space.
 pub struct CanonicalOrder {
@@ -36,10 +37,10 @@ impl CanonicalOrder {
     /// - Canonical ask (selling YES): locks `(BASIS - canonical_price) * qty * 10^decimals / BASIS`
     ///
     /// The sum of both sides = qty * 10^decimals, which is exactly the cost to mint one YES+NO pair per unit.
-    pub fn required_collateral(&self, quantity: u64, decimals: u8) -> u64 {
+    pub fn required_collateral(&self, quantity: u64, token: &TokenId) -> u64 {
         match self.side {
-            Side::Bid => self.price.cost(quantity, decimals),
-            Side::Ask => self.price.complement().cost(quantity, decimals),
+            Side::Bid => self.price.cost(quantity, token),
+            Side::Ask => self.price.complement().cost(quantity, token),
         }
     }
 }
@@ -90,17 +91,17 @@ mod tests {
     fn test_collateral_bid_plus_ask_equals_quantity() {
         let price = Price(6000);
         let qty = 1000;
-        let decimals = 0; // Use 0 decimals for this test
+        let token = TokenId::from([0u8; 32]); // 0 decimals (byte[31] = 0)
         let bid_col = CanonicalOrder {
             side: Side::Bid,
             price,
         }
-        .required_collateral(qty, decimals);
+        .required_collateral(qty, &token);
         let ask_col = CanonicalOrder {
             side: Side::Ask,
             price,
         }
-        .required_collateral(qty, decimals);
+        .required_collateral(qty, &token);
         // bid(6000*1000/10000=600) + ask(4000*1000/10000=400) = 1000 = qty
         assert_eq!(bid_col + ask_col, qty);
     }

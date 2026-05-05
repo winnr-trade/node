@@ -11433,6 +11433,7 @@ dependencies = [
  "borsh 1.5.7",
  "schemars 0.8.22",
  "serde",
+ "sov-bank",
  "sov-modules-api",
 ]
 
