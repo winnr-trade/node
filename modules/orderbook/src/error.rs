@@ -1,6 +1,7 @@
 //! Error types for the orderbook module.
 
 use shared_types::{MarketId, OrderId};
+use sov_bank::Amount;
 use sov_modules_api::{err_detail, ErrorContext, ErrorDetail, StateValueError};
 use thiserror::Error;
 
@@ -43,7 +44,7 @@ pub enum OrderbookError {
     InsufficientShares { required: u64, available: u64 },
 
     #[error("Insufficient collateral: required {required}, available {available}")]
-    InsufficientCollateral { required: u64, available: u64 },
+    InsufficientCollateral { required: Amount, available: Amount },
 
     #[error("Quantity must be greater than zero")]
     ZeroQuantity,

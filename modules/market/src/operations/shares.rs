@@ -22,12 +22,13 @@ impl<S: Spec> MarketModule<S> {
         let mut market = self.get_active_market(market_id, state)?;
 
         // Transfer collateral from the holder into market module custody.
+        let collateral_amount = Amount(amount as u128);
         self.bank
             .transfer_from(
                 to,
                 self.id.to_payable(),
                 Coins {
-                    amount: Amount(amount as u128),
+                    amount: collateral_amount,
                     token_id: market.collateral_token,
                 },
                 state,

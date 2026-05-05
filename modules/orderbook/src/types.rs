@@ -6,10 +6,8 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shared_types::{
-    MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, TokenIdExt,
-};
-use sov_bank::TokenId;
+use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
     Spec,
@@ -82,7 +80,7 @@ impl<S: Spec> Order<S> {
     ///
     /// Only meaningful for BUY orders (`side == Side::Bid`). For SELL orders,
     /// shares are reserved instead of collateral — use `remaining_quantity` directly.
-    pub fn locked_collateral(&self, token: &TokenId) -> u64 {
+    pub fn locked_collateral(&self, token: &TokenId) -> Amount {
         match self.canonical_side {
             Side::Bid => self.canonical_price.cost(self.remaining_quantity, token),
             Side::Ask => self
@@ -102,10 +100,10 @@ pub struct Fill {
     pub price: Price,
     /// Quantity filled.
     pub quantity: u64,
-    /// Maker fee.
-    pub maker_fee: u64,
-    /// Taker fee.
-    pub taker_fee: u64,
+    /// Maker fee in collateral base units.
+    pub maker_fee: Amount,
+    /// Taker fee in collateral base units.
+    pub taker_fee: Amount,
 }
 
 /// Fee configuration.

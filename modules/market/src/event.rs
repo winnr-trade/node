@@ -4,6 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::{MarketId, MarketStatus, Outcome};
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::SafeString;
 
 /// Events emitted by the prediction market module.
@@ -25,7 +26,7 @@ pub enum Event {
         market_id: MarketId,
         question: SafeString,
         creator: String,
-        collateral_token: String,
+        collateral_token: TokenId,
         resolution_time: u64,
         resolver: String,
     },
@@ -74,6 +75,6 @@ pub enum Event {
         market_id: MarketId,
         user: String,
         winning_shares: u64,
-        payout: u64,
+        payout: Amount,
     },
 }

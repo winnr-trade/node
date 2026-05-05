@@ -4,9 +4,9 @@ use crate::order::canonical::CanonicalOrder;
 use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
 use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, TokenIdExt};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side};
 use shielded_pool::Proof;
-use sov_bank::TokenId;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
 use tracing::debug;
 
@@ -278,14 +278,14 @@ impl<S: Spec> OrderbookModule<S> {
                 // BUY: refund price improvement collateral
                 let total_required_collateral =
                     canonical_order.required_collateral(quantity, &collateral_token);
-                let total_used_collateral: u64 = match_result
-                    .fills
-                    .iter()
-                    .map(|f| match canonical_order.side {
-                        Side::Bid => f.price.cost(f.quantity, &collateral_token),
-                        Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
-                    })
-                    .sum();
+                    let total_used_collateral =
+                        match_result.fills.iter().fold(Amount::ZERO, |acc, f| {
+                            let cost = match canonical_order.side {
+                                Side::Bid => f.price.cost(f.quantity, &collateral_token),
+                                Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
+                            };
+                            acc.saturating_add(cost)
+                        });
 
                 if should_post && match_result.remaining > 0 {
                     self.post_order(
@@ -308,7 +308,7 @@ impl<S: Spec> OrderbookModule<S> {
                             sender,
                             Some(sender),
                             market_id,
-                            remaining_collateral - required_remaining_collateral,
+                            remaining_collateral.saturating_sub(required_remaining_collateral),
                             state,
                         )?;
                     }
@@ -316,7 +316,7 @@ impl<S: Spec> OrderbookModule<S> {
                     // Fully filled or IOC/Market with partial fills
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
-                    if remaining_collateral > 0 {
+                    if remaining_collateral > 0u128 {
                         self.unlock_collateral_to(
                             sender,
                             Some(sender),

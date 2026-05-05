@@ -105,7 +105,7 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 question,
                 creator: ctx.sender().to_string(),
-                collateral_token: format!("{:?}", collateral_token),
+                collateral_token,
                 resolution_time,
                 resolver: resolver.to_string(),
             },

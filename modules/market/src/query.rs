@@ -2,7 +2,7 @@ use axum::routing::get;
 use shared_types::MarketId;
 use sov_bank::utils::TokenHolder;
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
-use sov_modules_api::prelude::{axum, serde_yaml, UnwrapInfallible};
+use sov_modules_api::prelude::{axum, UnwrapInfallible};
 use sov_modules_api::rest::utils::{errors, ApiResult, Path, Query};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};

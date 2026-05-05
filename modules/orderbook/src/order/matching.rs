@@ -4,8 +4,8 @@ use crate::{
     SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, Price, Side, TokenIdExt};
-use sov_bank::TokenId;
+use shared_types::{OrderId, OrderStatus, OrderType, Price, Side};
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -90,8 +90,8 @@ impl<S: Spec> OrderbookModule<S> {
                     order_id: maker_order_id,
                     price: fill_price,
                     quantity: fill_qty,
-                    maker_fee: (notional * config.maker_fee_bps as u64) / 10000,
-                    taker_fee: (notional * config.taker_fee_bps as u64) / 10000,
+                    maker_fee: Amount((notional.0 * config.maker_fee_bps as u128) / 10000),
+                    taker_fee: Amount((notional.0 * config.taker_fee_bps as u128) / 10000),
                 });
 
                 remaining -= fill_qty;

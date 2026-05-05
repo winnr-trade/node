@@ -145,21 +145,25 @@ impl<S: Spec> OrderbookModule<S> {
 
         let qty = fill.quantity;
         let token = &market.collateral_token;
-        let scale = 10u64.pow(token.get_decimals() as u32);
-        let qty_scaled = qty.checked_mul(scale).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling"))
-        })?;
+        let scale = 10u128.pow(token.get_decimals() as u32);
+        let qty_scaled = Amount::from(qty)
+            .checked_mul(Amount(scale))
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
 
         // Release collateral from both sides into orderbook custody accounting.
         // Use a residual split so both legs always sum exactly to qty_scaled.
         let buyer_release = fill.price.cost(qty, token);
-        let seller_release = qty_scaled.checked_sub(buyer_release).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
-        })?;
+        let seller_release = qty_scaled
+            .checked_sub(buyer_release)
+            .ok_or_else(|| {
+                OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
+            })?;
 
-        let total_release = buyer_release.checked_add(seller_release).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in MintPair collateral split"))
-        })?;
+        let total_release = buyer_release
+            .checked_add(seller_release)
+            .ok_or_else(|| {
+                OrderbookError::Any(anyhow::anyhow!("Overflow in MintPair collateral split"))
+            })?;
         if total_release != qty_scaled {
             return Err(OrderbookError::Any(anyhow::anyhow!(
                 "MintPair collateral split mismatch: buyer={} seller={} total={} expected={}",
@@ -331,10 +335,10 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
         let token = &market.collateral_token;
-        let scale = 10u64.pow(token.get_decimals() as u32);
-        let qty_scaled = qty.checked_mul(scale).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling"))
-        })?;
+        let scale = 10u128.pow(token.get_decimals() as u32);
+        let qty_scaled = Amount::from(qty)
+            .checked_mul(Amount(scale))
+            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
 
         // Unreserve shares from both sides
         self.unlock_shares_to(
@@ -381,19 +385,23 @@ impl<S: Spec> OrderbookModule<S> {
 
         // Distribute redeemed collateral according to execution price.
         let yes_payout = fill.price.cost(qty, token);
-        let no_payout = qty_scaled.checked_sub(yes_payout).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in MergePair collateral split"))
-        })?;
-        let total_payout = yes_payout.checked_add(no_payout).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in MergePair collateral split"))
-        })?;
+            let no_payout = qty_scaled
+                .checked_sub(yes_payout)
+                .ok_or_else(|| {
+                    OrderbookError::Any(anyhow::anyhow!("Underflow in MergePair collateral split"))
+                })?;
+            let total_payout = yes_payout
+                .checked_add(no_payout)
+                .ok_or_else(|| {
+                    OrderbookError::Any(anyhow::anyhow!("Overflow in MergePair collateral split"))
+                })?;
         if total_payout != qty_scaled {
             return Err(OrderbookError::Any(anyhow::anyhow!(
                 "MergePair collateral split mismatch: yes={} no={} total={} expected={}",
-                yes_payout,
-                no_payout,
-                total_payout,
-                qty_scaled
+                    yes_payout,
+                    no_payout,
+                    total_payout,
+                    qty_scaled
             )));
         }
 
@@ -402,7 +410,7 @@ impl<S: Spec> OrderbookModule<S> {
                 self.id.to_payable(),
                 canonical_seller,
                 Coins {
-                    amount: Amount(yes_payout as u128),
+                    amount: yes_payout,
                     token_id: market.collateral_token,
                 },
                 state,
@@ -413,7 +421,7 @@ impl<S: Spec> OrderbookModule<S> {
                 self.id.to_payable(),
                 canonical_buyer,
                 Coins {
-                    amount: Amount(no_payout as u128),
+                    amount: no_payout,
                     token_id: market.collateral_token,
                 },
                 state,

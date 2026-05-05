@@ -12,10 +12,10 @@ impl<S: Spec> OrderbookModule<S> {
         &mut self,
         user: &S::Address,
         market_id: MarketId,
-        amount: u64,
+        amount: Amount,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        if amount == 0 {
+        if amount == Amount::ZERO {
             return Ok(());
         }
 
@@ -31,7 +31,7 @@ impl<S: Spec> OrderbookModule<S> {
                 user,
                 self.id.to_payable(),
                 Coins {
-                    amount: Amount(amount as u128),
+                    amount,
                     token_id: market.collateral_token,
                 },
                 state,
@@ -46,7 +46,7 @@ impl<S: Spec> OrderbookModule<S> {
             .locked_collateral
             .get(&key, state)
             .into_orderbook_err()?
-            .unwrap_or(0);
+            .unwrap_or_default();
         let new_val = current
             .checked_add(amount)
             .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_collateral")))?;
@@ -66,10 +66,10 @@ impl<S: Spec> OrderbookModule<S> {
         locked_owner: &S::Address,
         recipient: Option<impl Payable<S>>,
         market_id: MarketId,
-        amount: u64,
+        amount: Amount,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        if amount == 0 {
+        if amount == Amount::ZERO {
             return Ok(());
         }
 
@@ -81,7 +81,7 @@ impl<S: Spec> OrderbookModule<S> {
             .locked_collateral
             .get(&key, state)
             .into_orderbook_err()?
-            .unwrap_or(0);
+            .unwrap_or_default();
 
         let new_val =
             current
@@ -91,7 +91,7 @@ impl<S: Spec> OrderbookModule<S> {
                     available: current,
                 })?;
 
-        if new_val == 0 {
+        if new_val == Amount::ZERO {
             self.locked_collateral
                 .remove(&key, state)
                 .into_orderbook_err()?;
@@ -114,7 +114,7 @@ impl<S: Spec> OrderbookModule<S> {
                     self.id.to_payable(),
                     recipient,
                     Coins {
-                        amount: Amount(amount as u128),
+                        amount,
                         token_id: market.collateral_token,
                     },
                     state,

@@ -95,7 +95,7 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 user: ctx.sender().to_string(),
                 winning_shares,
-                payout,
+                payout: payout.into(),
             },
         );
 
