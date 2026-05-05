@@ -1,6 +1,6 @@
 //! Error types for the market module.
 
-use shared_types::{MarketId, MarketStatus};
+use shared_types::{MarketId, MarketStatus, Size};
 use sov_bank::TokenId;
 use sov_modules_api::{err_detail, ErrorContext, ErrorDetail, StateValueError};
 
@@ -53,9 +53,9 @@ pub enum MarketError {
 
     #[error("Insufficient shares: required {required}, available YES: {available_yes}, NO: {available_no}")]
     InsufficientShares {
-        required: u64,
-        available_yes: u64,
-        available_no: u64,
+        required: Size,
+        available_yes: Size,
+        available_no: Size,
     },
 
     #[error("No position found for market {market_id}")]

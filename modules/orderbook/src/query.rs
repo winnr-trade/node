@@ -1,6 +1,6 @@
 use crate::{MarketSideKey, OrderbookModule, PriceLevelKey};
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
 use sov_modules_api::prelude::{
     axum::{
@@ -34,8 +34,8 @@ struct UserOrdersResponse<S: Spec> {
     side: Side,
     canonical_side: Side,
     canonical_price: Price,
-    original_quantity: u64,
-    remaining_quantity: u64,
+    original_quantity: Size,
+    remaining_quantity: Size,
     owner: S::Address,
     order_type: OrderType,
     created_at: u64,
@@ -100,15 +100,15 @@ impl<S: Spec> OrderbookModule<S> {
                     Side::Bid => state.bids.get(&level_key, acc),
                     Side::Ask => state.asks.get(&level_key, acc),
                 };
-                let mut qty = 0u64;
+                let mut qty = Size::ZERO;
                 if let Ok(Some(ids)) = order_ids {
                     for oid in ids {
                         if let Ok(Some(order)) = state.orders.get(&oid, acc) {
-                            qty += order.remaining_quantity;
+                            qty = qty.saturating_add(order.remaining_quantity);
                         }
                     }
                 }
-                levels.push([price.0, qty]);
+                levels.push([price.0, qty.0]);
             }
         }
         levels

@@ -1,7 +1,7 @@
 use crate::utils::{create_test_market, get_market, mint_shares};
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule, MarketStatus};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_test_utils::{AsUser, TransactionTestCase};
 
 #[test]
@@ -193,7 +193,7 @@ fn test_mint_on_halted_market_fails() {
     // Try to mint on halted market
     let mint_msg = CallMessage::MintShares {
         market_id,
-        amount: 100,
+        amount: Size(100),
     };
     runner.execute_transaction(TransactionTestCase {
         input: user.create_plain_message::<RT, MarketModule<S>>(mint_msg),
@@ -207,7 +207,7 @@ fn test_mint_on_halted_market_fails() {
 
     // Market totals should be unchanged
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_shares, 0);
+    assert_eq!(market.total_shares, Size::ZERO);
 }
 
 #[test]
@@ -249,7 +249,7 @@ fn test_mint_after_resume_succeeds() {
 
     // Verify shares were minted
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_shares, 100);
+    assert_eq!(market.total_shares, Size(100));
 }
 
 #[test]

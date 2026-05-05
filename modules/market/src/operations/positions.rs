@@ -1,6 +1,6 @@
 use crate::error::IntoMarketError;
 use crate::{MarketError, MarketModule, PositionKey};
-use shared_types::{MarketId, MarketStatus};
+use shared_types::{MarketId, MarketStatus, Size};
 use sov_bank::utils::TokenHolder;
 use sov_modules_api::{Spec, TxState};
 
@@ -10,8 +10,8 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
-        yes_add: u64,
-        no_add: u64,
+        yes_add: Size,
+        no_add: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let owner = TokenHolder::User(user_address.clone());
@@ -23,11 +23,11 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         owner: &TokenHolder<S>,
-        yes_add: u64,
-        no_add: u64,
+        yes_add: Size,
+        no_add: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if yes_add == 0 && no_add == 0 {
+        if yes_add.is_zero() && no_add.is_zero() {
             return Ok(());
         }
 
@@ -65,8 +65,8 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
-        yes_sub: u64,
-        no_sub: u64,
+        yes_sub: Size,
+        no_sub: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let owner = TokenHolder::User(user_address.clone());
@@ -78,11 +78,11 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         owner: &TokenHolder<S>,
-        yes_sub: u64,
-        no_sub: u64,
+        yes_sub: Size,
+        no_sub: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if yes_sub == 0 && no_sub == 0 {
+        if yes_sub.is_zero() && no_sub.is_zero() {
             return Ok(());
         }
 
@@ -104,8 +104,8 @@ impl<S: Spec> MarketModule<S> {
             });
         }
 
-        position.yes_shares -= yes_sub;
-        position.no_shares -= no_sub;
+        position.yes_shares = position.yes_shares.saturating_sub(yes_sub);
+        position.no_shares = position.no_shares.saturating_sub(no_sub);
 
         if position.is_empty() {
             self.positions

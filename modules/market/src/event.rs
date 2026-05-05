@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shared_types::{MarketId, MarketStatus, Outcome};
+use shared_types::{MarketId, MarketStatus, Outcome, Size};
 use sov_bank::{Amount, TokenId};
 use sov_modules_api::SafeString;
 
@@ -43,7 +43,7 @@ pub enum Event {
     SharesMinted {
         market_id: MarketId,
         user: String,
-        amount: u64,
+        amount: Size,
     },
 
     /// Shares were redeemed.
@@ -51,7 +51,7 @@ pub enum Event {
     SharesRedeemed {
         market_id: MarketId,
         user: String,
-        amount: u64,
+        amount: Size,
     },
 
     /// Shares were transferred between holders.
@@ -59,8 +59,8 @@ pub enum Event {
         market_id: MarketId,
         from: String,
         to: String,
-        yes_amount: u64,
-        no_amount: u64,
+        yes_amount: Size,
+        no_amount: Size,
     },
 
     /// Market was resolved.
@@ -74,7 +74,7 @@ pub enum Event {
     WinningsClaimed {
         market_id: MarketId,
         user: String,
-        winning_shares: u64,
+        winning_shares: Size,
         payout: Amount,
     },
 }

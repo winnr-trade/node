@@ -12,6 +12,67 @@ use std::{
 };
 
 // ============================================================================
+// SIZE
+// ============================================================================
+
+/// Number of outcome tokens (YES or NO shares) — the "quantity" of an order or fill.
+///
+/// Stored as `u64`. Separate from [`Amount`] (collateral in base units) to prevent
+/// mixing share counts with monetary values.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
+)]
+#[serialize(Borsh, Serde)]
+pub struct Size(pub u64);
+
+impl Size {
+    pub const ZERO: Size = Size(0);
+    pub const MAX: Size = Size(u64::MAX);
+
+    pub fn is_zero(self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn checked_add(self, rhs: Size) -> Option<Size> {
+        self.0.checked_add(rhs.0).map(Size)
+    }
+
+    pub fn checked_sub(self, rhs: Size) -> Option<Size> {
+        self.0.checked_sub(rhs.0).map(Size)
+    }
+
+    pub fn saturating_add(self, rhs: Size) -> Size {
+        Size(self.0.saturating_add(rhs.0))
+    }
+
+    pub fn saturating_sub(self, rhs: Size) -> Size {
+        Size(self.0.saturating_sub(rhs.0))
+    }
+
+    pub fn min(self, rhs: Size) -> Size {
+        Size(self.0.min(rhs.0))
+    }
+}
+
+impl From<u64> for Size {
+    fn from(v: u64) -> Self {
+        Size(v)
+    }
+}
+
+impl From<Size> for u64 {
+    fn from(s: Size) -> u64 {
+        s.0
+    }
+}
+
+impl Display for Size {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// ============================================================================
 // TOKEN EXTENSIONS
 // ============================================================================
 
@@ -175,18 +236,18 @@ impl Price {
     ///
     /// E.g., 100 shares at price 6500 (0.65) with 6 decimals (USDC) = 65,000,000 base units.
     /// Formula: (quantity * price_bps * 10^decimals) / BASIS
-    pub fn cost(&self, quantity: u64, token: &TokenId) -> Amount {
+    pub fn cost(&self, quantity: Size, token: &TokenId) -> Amount {
         let scale = 10u128.pow(token.get_decimals() as u32);
-        Amount((self.0 as u128 * quantity as u128 * scale) / Self::BASIS as u128)
+        Amount((self.0 as u128 * quantity.0 as u128 * scale) / Self::BASIS as u128)
     }
 
     /// Calculate quantity affordable with given collateral in base units.
-    pub fn quantity_for_collateral(&self, collateral: Amount, token: &TokenId) -> u64 {
+    pub fn quantity_for_collateral(&self, collateral: Amount, token: &TokenId) -> Size {
         if self.0 == 0 {
-            return 0;
+            return Size::ZERO;
         }
         let scale = 10u128.pow(token.get_decimals() as u32);
-        ((collateral.0 * Self::BASIS as u128) / (self.0 as u128 * scale)) as u64
+        Size(((collateral.0 * Self::BASIS as u128) / (self.0 as u128 * scale)) as u64)
     }
 }
 
@@ -307,10 +368,10 @@ mod tests {
         let token = TokenId::from(token_bytes);
 
         // 100 shares at 0.65 with 6 decimals = 65,000,000 base units
-        assert_eq!(price.cost(100, &token), Amount(65_000_000));
+        assert_eq!(price.cost(Size(100), &token), Amount(65_000_000));
 
         // 1000 shares at 0.65 with 6 decimals = 650,000,000 base units
-        assert_eq!(price.cost(1000, &token), Amount(650_000_000));
+        assert_eq!(price.cost(Size(1000), &token), Amount(650_000_000));
     }
 
     #[test]

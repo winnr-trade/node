@@ -1,6 +1,6 @@
 use crate::error::IntoMarketError;
 use crate::{Event, MarketError, MarketModule, PositionKey};
-use shared_types::{MarketId, Outcome};
+use shared_types::{MarketId, Outcome, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
@@ -37,7 +37,7 @@ impl<S: Spec> MarketModule<S> {
             .ok_or(MarketError::NoPosition { market_id })?;
 
         // Calculate payout based on outcome
-        let (winning_shares, payout) = match outcome {
+        let (winning_shares, payout): (Size, Size) = match outcome {
             Outcome::Yes => (position.yes_shares, position.yes_shares),
             Outcome::No => (position.no_shares, position.no_shares),
             Outcome::Invalid => {
@@ -47,7 +47,7 @@ impl<S: Spec> MarketModule<S> {
             }
         };
 
-        if payout == 0 {
+        if payout.is_zero() {
             return Err(MarketError::NoWinningsToClaim { market_id });
         }
 
@@ -63,7 +63,7 @@ impl<S: Spec> MarketModule<S> {
         self.market_collateral
             .set(
                 &market_id,
-                &current_collateral.saturating_sub(payout),
+                &current_collateral.saturating_sub(payout.0),
                 state,
             )
             .into_market_err()?;
@@ -74,7 +74,7 @@ impl<S: Spec> MarketModule<S> {
                 self.id.to_payable(),
                 ctx.sender(),
                 Coins {
-                    amount: Amount(payout as u128),
+                    amount: Amount(payout.0 as u128),
                     token_id: market.collateral_token,
                 },
                 state,
@@ -84,8 +84,8 @@ impl<S: Spec> MarketModule<S> {
         info!(
             market_id = %market_id,
             user = %ctx.sender(),
-            winning_shares = winning_shares,
-            payout = payout,
+            winning_shares = %winning_shares,
+            payout = %payout,
             "Winnings claimed"
         );
 
@@ -95,7 +95,7 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 user: ctx.sender().to_string(),
                 winning_shares,
-                payout: payout.into(),
+                payout: Amount(payout.0 as u128),
             },
         );
 

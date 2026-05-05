@@ -1,7 +1,7 @@
 use crate::setup;
 use crate::utils;
 use orderbook::OrderbookError;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 
 #[test]
 fn test_cancel_open_order() {
@@ -28,7 +28,7 @@ fn test_cancel_open_order() {
     // Verify order is cancelled
     let order = utils::get_order(&runner, OrderId(order_id));
     assert_eq!(order.status, OrderStatus::Cancelled);
-    assert_eq!(order.remaining_quantity, 0);
+    assert_eq!(order.remaining_quantity, Size(0));
 }
 
 #[test]
@@ -63,14 +63,14 @@ fn test_cancel_partially_filled_order() {
     let ask = utils::get_order(&runner, OrderId(ask_id));
     // Maker orders stay Open even when partially filled
     assert_eq!(ask.status, OrderStatus::Open);
-    assert_eq!(ask.remaining_quantity, 150);
+    assert_eq!(ask.remaining_quantity, Size(150));
 
     // Cancel the partially filled (but status=Open) ask
     utils::cancel_order(&mut runner, &data.user1, OrderId(ask_id));
 
     let ask = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask.status, OrderStatus::Cancelled);
-    assert_eq!(ask.remaining_quantity, 0);
+    assert_eq!(ask.remaining_quantity, Size(0));
 }
 
 #[test]

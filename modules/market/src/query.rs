@@ -1,5 +1,5 @@
 use axum::routing::get;
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_bank::utils::TokenHolder;
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
 use sov_modules_api::prelude::{axum, UnwrapInfallible};
@@ -36,8 +36,8 @@ struct ActivePosition {
     market_id: MarketId,
     question: String,
     outcome: Option<Outcome>,
-    yes_shares: u64,
-    no_shares: u64,
+    yes_shares: Size,
+    no_shares: Size,
 }
 
 impl<S: Spec> MarketModule<S> {

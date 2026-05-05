@@ -3,7 +3,7 @@ use crate::utils::{
 };
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_test_utils::{AsUser, TransactionTestCase};
 
 #[test]
@@ -19,7 +19,7 @@ fn test_redeem_shares_success() {
 
     let msg = CallMessage::RedeemShares {
         market_id,
-        amount: 50,
+        amount: Size(50),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -35,12 +35,12 @@ fn test_redeem_shares_success() {
 
     // Verify remaining position
     let position = get_position(&runner, market_id, &user).expect("position should exist");
-    assert_eq!(position.yes_shares, 50);
-    assert_eq!(position.no_shares, 50);
+    assert_eq!(position.yes_shares, Size(50));
+    assert_eq!(position.no_shares, Size(50));
 
     // Verify market totals reduced
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_shares, 50);
+    assert_eq!(market.total_shares, Size(50));
     assert_eq!(get_market_collateral(&runner, market_id), 50);
 }
 
@@ -57,7 +57,7 @@ fn test_redeem_all_shares() {
 
     let msg = CallMessage::RedeemShares {
         market_id,
-        amount: 100,
+        amount: Size(100),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -78,7 +78,7 @@ fn test_redeem_all_shares() {
     );
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_shares, 0);
+    assert_eq!(market.total_shares, Size::ZERO);
     assert_eq!(get_market_collateral(&runner, market_id), 0);
 }
 
@@ -95,7 +95,7 @@ fn test_redeem_more_than_owned_fails() {
 
     let msg = CallMessage::RedeemShares {
         market_id,
-        amount: 200,
+        amount: Size(200),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -116,7 +116,7 @@ fn test_redeem_shares_nonexistent_market_fails() {
 
     let msg = CallMessage::RedeemShares {
         market_id: MarketId(999),
-        amount: 100,
+        amount: Size(100),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -142,7 +142,7 @@ fn test_redeem_zero_amount_fails() {
 
     let msg = CallMessage::RedeemShares {
         market_id,
-        amount: 0,
+        amount: Size::ZERO,
     };
 
     runner.execute_transaction(TransactionTestCase {

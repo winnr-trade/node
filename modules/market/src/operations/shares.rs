@@ -1,6 +1,6 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule};
-use shared_types::{MarketId, MarketStatus};
+use shared_types::{MarketId, MarketStatus, Size};
 use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
@@ -10,11 +10,11 @@ impl<S: Spec> MarketModule<S> {
     pub fn mint_shares_to(
         &mut self,
         market_id: MarketId,
-        amount: u64,
+        amount: Size,
         to: impl Payable<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if amount == 0 {
+        if amount.is_zero() {
             return Err(MarketError::ZeroAmount);
         }
 
@@ -22,7 +22,7 @@ impl<S: Spec> MarketModule<S> {
         let mut market = self.get_active_market(market_id, state)?;
 
         // Transfer collateral from the holder into market module custody.
-        let collateral_amount = Amount(amount as u128);
+        let collateral_amount = Amount(amount.0 as u128);
         self.bank
             .transfer_from(
                 to,
@@ -51,7 +51,7 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err()?
             .unwrap_or(0);
         self.market_collateral
-            .set(&market_id, &(current_collateral + amount), state)
+            .set(&market_id, &(current_collateral + amount.0), state)
             .into_market_err()?;
 
         // Update owner position and accessory index for users.
@@ -60,7 +60,7 @@ impl<S: Spec> MarketModule<S> {
         info!(
             market_id = %market_id,
             user = %owner,
-            amount = amount,
+            amount = %amount,
             "Shares minted"
         );
 
@@ -80,7 +80,7 @@ impl<S: Spec> MarketModule<S> {
     pub(crate) fn mint_shares(
         &mut self,
         market_id: MarketId,
-        amount: u64,
+        amount: Size,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -91,11 +91,11 @@ impl<S: Spec> MarketModule<S> {
     pub fn burn_shares_from(
         &mut self,
         market_id: MarketId,
-        amount: u64,
+        amount: Size,
         from: impl Payable<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if amount == 0 {
+        if amount.is_zero() {
             return Err(MarketError::ZeroAmount);
         }
 
@@ -115,7 +115,7 @@ impl<S: Spec> MarketModule<S> {
         self.sub_position_shares_for_owner(market_id, &owner, amount, amount, state)?;
 
         // Update market totals
-        market.total_shares -= amount;
+        market.total_shares = market.total_shares.saturating_sub(amount);
         self.markets
             .set(&market_id, &market, state)
             .into_market_err()?;
@@ -129,7 +129,7 @@ impl<S: Spec> MarketModule<S> {
         self.market_collateral
             .set(
                 &market_id,
-                &current_collateral.saturating_sub(amount),
+                &current_collateral.saturating_sub(amount.0),
                 state,
             )
             .into_market_err()?;
@@ -140,7 +140,7 @@ impl<S: Spec> MarketModule<S> {
                 self.id.to_payable(),
                 from,
                 Coins {
-                    amount: Amount(amount as u128),
+                    amount: Amount(amount.0 as u128),
                     token_id: market.collateral_token,
                 },
                 state,
@@ -150,7 +150,7 @@ impl<S: Spec> MarketModule<S> {
         info!(
             market_id = %market_id,
             user = %owner,
-            amount = amount,
+            amount = %amount,
             "Shares redeemed"
         );
 
@@ -170,7 +170,7 @@ impl<S: Spec> MarketModule<S> {
     pub(crate) fn burn_shares(
         &mut self,
         market_id: MarketId,
-        amount: u64,
+        amount: Size,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
@@ -183,11 +183,11 @@ impl<S: Spec> MarketModule<S> {
         market_id: MarketId,
         from: impl Payable<S>,
         to: impl Payable<S>,
-        yes_amount: u64,
-        no_amount: u64,
+        yes_amount: Size,
+        no_amount: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if yes_amount == 0 && no_amount == 0 {
+        if yes_amount.is_zero() && no_amount.is_zero() {
             return Err(MarketError::ZeroAmount);
         }
 
@@ -230,8 +230,8 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         to: S::Address,
-        yes_amount: u64,
-        no_amount: u64,
+        yes_amount: Size,
+        no_amount: Size,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {

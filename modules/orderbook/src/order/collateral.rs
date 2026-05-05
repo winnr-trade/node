@@ -1,7 +1,7 @@
 use crate::error::IntoOrderbookError;
 use crate::{OrderbookError, OrderbookModule, UserMarketKey};
 use market::{MarketId, PositionKey};
-use shared_types::OutcomeSide;
+use shared_types::{OutcomeSide, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Spec, TxState};
@@ -135,7 +135,7 @@ impl<S: Spec> OrderbookModule<S> {
         owner: &S::Address,
         market_id: MarketId,
         outcome: OutcomeSide,
-        amount: u64,
+        amount: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
         let position_key = PositionKey {
@@ -160,9 +160,9 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .unwrap_or_default();
 
-        let (delta_shares_yes, delta_shares_no) = match outcome {
-            OutcomeSide::Yes => (amount, 0),
-            OutcomeSide::No => (0, amount),
+        let (delta_yes, delta_no): (Size, Size) = match outcome {
+            OutcomeSide::Yes => (amount, Size::ZERO),
+            OutcomeSide::No => (Size::ZERO, amount),
         };
 
         let available_shares = match outcome {
@@ -179,12 +179,12 @@ impl<S: Spec> OrderbookModule<S> {
 
         let new_locked_shares_yes = locked_shares
             .yes
-            .checked_add(delta_shares_yes)
+            .checked_add(delta_yes)
             .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_shares")))?;
 
         let new_locked_shares_no = locked_shares
             .no
-            .checked_add(delta_shares_no)
+            .checked_add(delta_no)
             .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_shares")))?;
 
         locked_shares.yes = new_locked_shares_yes;
@@ -206,10 +206,10 @@ impl<S: Spec> OrderbookModule<S> {
         recipient: Option<&S::Address>,
         market_id: MarketId,
         outcome: OutcomeSide,
-        amount: u64,
+        amount: Size,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        if amount == 0 {
+        if amount.is_zero() {
             return Ok(());
         }
 
@@ -224,28 +224,32 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .unwrap_or_default();
 
-        let (delta_shares_yes, delta_shares_no) = match outcome {
-            OutcomeSide::Yes => (amount, 0),
-            OutcomeSide::No => (0, amount),
+        let (delta_yes, delta_no): (Size, Size) = match outcome {
+            OutcomeSide::Yes => (amount, Size::ZERO),
+            OutcomeSide::No => (Size::ZERO, amount),
         };
 
-        let new_locked_shares_yes = locked_shares.yes.checked_sub(delta_shares_yes).ok_or(
-            OrderbookError::InsufficientShares {
-                required: amount,
-                available: locked_shares.yes,
-            },
-        )?;
-        let new_locked_shares_no = locked_shares.no.checked_sub(delta_shares_no).ok_or(
-            OrderbookError::InsufficientShares {
-                required: amount,
-                available: locked_shares.no,
-            },
-        )?;
+        let new_locked_shares_yes =
+            locked_shares
+                .yes
+                .checked_sub(delta_yes)
+                .ok_or(OrderbookError::InsufficientShares {
+                    required: amount,
+                    available: locked_shares.yes,
+                })?;
+        let new_locked_shares_no =
+            locked_shares
+                .no
+                .checked_sub(delta_no)
+                .ok_or(OrderbookError::InsufficientShares {
+                    required: amount,
+                    available: locked_shares.no,
+                })?;
 
         locked_shares.yes = new_locked_shares_yes;
         locked_shares.no = new_locked_shares_no;
 
-        if locked_shares.yes == 0 && locked_shares.no == 0 {
+        if locked_shares.yes.is_zero() && locked_shares.no.is_zero() {
             self.locked_shares
                 .remove(&key, state)
                 .into_orderbook_err()?;
@@ -257,14 +261,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         if let Some(recipient) = recipient {
             self.market
-                .transfer_shares_from(
-                    market_id,
-                    owner,
-                    recipient,
-                    delta_shares_yes,
-                    delta_shares_no,
-                    state,
-                )
+                .transfer_shares_from(market_id, owner, recipient, delta_yes, delta_no, state)
                 .into_orderbook_err()?;
         }
 

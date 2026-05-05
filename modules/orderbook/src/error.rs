@@ -1,6 +1,6 @@
 //! Error types for the orderbook module.
 
-use shared_types::{MarketId, OrderId};
+use shared_types::{MarketId, OrderId, Size};
 use sov_bank::Amount;
 use sov_modules_api::{err_detail, ErrorContext, ErrorDetail, StateValueError};
 use thiserror::Error;
@@ -22,7 +22,7 @@ pub enum OrderbookError {
     InvalidPrice { price: u64 },
 
     #[error("Order size {size} is below minimum {minimum}")]
-    OrderTooSmall { size: u64, minimum: u64 },
+    OrderTooSmall { size: Size, minimum: Size },
 
     #[error("Not order owner: owned by {owner}, sender is {sender}")]
     NotOrderOwner {
@@ -38,10 +38,10 @@ pub enum OrderbookError {
     PostOnlyWouldMatch,
 
     #[error("FillOrKill: requested {requested}, only {available} available")]
-    FillOrKillNotFilled { requested: u64, available: u64 },
+    FillOrKillNotFilled { requested: Size, available: Size },
 
     #[error("Insufficient shares: required {required}, available {available}")]
-    InsufficientShares { required: u64, available: u64 },
+    InsufficientShares { required: Size, available: Size },
 
     #[error("Insufficient collateral: required {required}, available {available}")]
     InsufficientCollateral { required: Amount, available: Amount },

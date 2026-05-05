@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
@@ -72,7 +72,7 @@ pub struct Market<S: Spec> {
     /// How this market gets resolved.
     pub resolver: Resolver<S>,
     /// Total outcome shares in circulation (YES == NO always, so one counter suffices).
-    pub total_shares: u64,
+    pub total_shares: Size,
     /// Slot when market was created.
     pub created_at: u64,
 }
@@ -105,26 +105,24 @@ impl<S: Spec> Market<S> {
 )]
 pub struct Position {
     /// YES shares held.
-    pub yes_shares: u64,
+    pub yes_shares: Size,
     /// NO shares held.
-    pub no_shares: u64,
+    pub no_shares: Size,
 }
 
 impl Position {
     /// Check if position is empty.
     pub fn is_empty(&self) -> bool {
-        self.yes_shares == 0 && self.no_shares == 0
+        self.yes_shares.is_zero() && self.no_shares.is_zero()
     }
 
     /// Get minimum of YES and NO shares (redeemable pairs).
-    pub fn min_shares(&self) -> u64 {
+    pub fn min_shares(&self) -> Size {
         self.yes_shares.min(self.no_shares)
     }
 }
 
-#[derive(
-    Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct PositionKey<S: Spec> {
     pub market_id: MarketId,
@@ -151,10 +149,7 @@ impl<S: Spec> FromStr for PositionKey<S> {
 
         let market_id = MarketId(u64::from_str(parts[0])?);
         let owner = serde_json::from_str(parts[1])?;
-        Ok(PositionKey {
-            market_id,
-            owner,
-        })
+        Ok(PositionKey { market_id, owner })
     }
 }
 

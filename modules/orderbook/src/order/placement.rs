@@ -4,7 +4,7 @@ use crate::order::canonical::CanonicalOrder;
 use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
 use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side, Size};
 use shielded_pool::Proof;
 use sov_bank::{Amount, TokenId};
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
@@ -42,7 +42,7 @@ impl<S: Spec> OrderbookModule<S> {
                 commitment,
                 nullifier,
                 token_id,
-                order_request.quantity,
+                order_request.quantity.0,
                 stealth_address,
                 ctx,
                 state,
@@ -129,7 +129,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         // Update order
         order.status = OrderStatus::Cancelled;
-        order.remaining_quantity = 0;
+        order.remaining_quantity = Size::ZERO;
         self.orders
             .set(&order_id, &order, state)
             .into_orderbook_err()?;
@@ -239,8 +239,8 @@ impl<S: Spec> OrderbookModule<S> {
 
         let should_post = Self::should_post(
             &order_type,
-            match_result.total_filled,
-            match_result.remaining,
+            match_result.total_quantity_filled,
+            match_result.remaining_quantity,
             quantity,
         )?;
 
@@ -278,16 +278,16 @@ impl<S: Spec> OrderbookModule<S> {
                 // BUY: refund price improvement collateral
                 let total_required_collateral =
                     canonical_order.required_collateral(quantity, &collateral_token);
-                    let total_used_collateral =
-                        match_result.fills.iter().fold(Amount::ZERO, |acc, f| {
-                            let cost = match canonical_order.side {
-                                Side::Bid => f.price.cost(f.quantity, &collateral_token),
-                                Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
-                            };
-                            acc.saturating_add(cost)
-                        });
+                let total_used_collateral =
+                    match_result.fills.iter().fold(Amount::ZERO, |acc, f| {
+                        let cost = match canonical_order.side {
+                            Side::Bid => f.price.cost(f.quantity, &collateral_token),
+                            Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
+                        };
+                        acc.saturating_add(cost)
+                    });
 
-                if should_post && match_result.remaining > 0 {
+                if should_post && !match_result.remaining_quantity.is_zero() {
                     self.post_order(
                         order_id,
                         &order_request,
@@ -301,7 +301,7 @@ impl<S: Spec> OrderbookModule<S> {
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
                     let required_remaining_collateral = canonical_order
-                        .required_collateral(match_result.remaining, &collateral_token);
+                        .required_collateral(match_result.remaining_quantity, &collateral_token);
 
                     if remaining_collateral > required_remaining_collateral {
                         self.unlock_collateral_to(
@@ -312,7 +312,7 @@ impl<S: Spec> OrderbookModule<S> {
                             state,
                         )?;
                     }
-                } else if match_result.total_filled > 0 {
+                } else if !match_result.total_quantity_filled.is_zero() {
                     // Fully filled or IOC/Market with partial fills
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
@@ -325,7 +325,7 @@ impl<S: Spec> OrderbookModule<S> {
                             state,
                         )?;
                     }
-                } else if match_result.remaining > 0 {
+                } else if !match_result.remaining_quantity.is_zero() {
                     // Not posted (IOC/Market) with no fills
                     self.unlock_collateral_to(
                         sender,
@@ -338,7 +338,7 @@ impl<S: Spec> OrderbookModule<S> {
             }
             Side::Ask => {
                 // SELL: unlock unfilled shares if not posting
-                if should_post && match_result.remaining > 0 {
+                if should_post && !match_result.remaining_quantity.is_zero() {
                     self.post_order(
                         order_id,
                         &order_request,
@@ -348,9 +348,9 @@ impl<S: Spec> OrderbookModule<S> {
                         state,
                     )?;
                     // Shares for remaining qty stay reserved (for the resting order)
-                } else if match_result.remaining > 0 {
+                } else if !match_result.remaining_quantity.is_zero() {
                     // IOC/Market/no fills: unlock unfilled shares
-                    let to_unreserve = match_result.remaining;
+                    let to_unreserve = match_result.remaining_quantity;
                     self.unlock_shares_to(sender, None, market_id, outcome, to_unreserve, state)?;
                 }
             }
@@ -373,20 +373,20 @@ impl<S: Spec> OrderbookModule<S> {
         );
 
         // Emit fill event if any
-        if match_result.total_filled > 0 {
+        if !match_result.total_quantity_filled.is_zero() {
             let avg_price = match_result
                 .fills
                 .iter()
-                .map(|f| f.price.0 * f.quantity)
+                .map(|f| f.price.0 * f.quantity.0)
                 .sum::<u64>()
-                / match_result.total_filled;
+                / match_result.total_quantity_filled.0;
 
             self.emit_event(
                 state,
                 Event::OrderFilled {
                     order_id,
-                    filled_quantity: match_result.total_filled,
-                    remaining_quantity: match_result.remaining,
+                    filled_quantity: match_result.total_quantity_filled,
+                    remaining_quantity: match_result.remaining_quantity,
                     average_price: avg_price,
                 },
             );
@@ -429,11 +429,11 @@ impl<S: Spec> OrderbookModule<S> {
             canonical_side: canonical.side,
             canonical_price: canonical.price,
             original_quantity: *quantity,
-            remaining_quantity: match_result.remaining,
+            remaining_quantity: match_result.remaining_quantity,
             owner: sender.clone(),
             order_type: *order_type,
             created_at,
-            status: if match_result.total_filled > 0 {
+            status: if !match_result.total_quantity_filled.is_zero() {
                 OrderStatus::PartiallyFilled
             } else {
                 OrderStatus::Open

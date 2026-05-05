@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::{RT, S};
 use market::ResolutionData;
 use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
-use shared_types::{MarketId, Outcome};
+use shared_types::{MarketId, Outcome, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::TokenId;
 use sov_modules_api::da::Time;
@@ -75,7 +75,10 @@ pub fn mint_shares(
     market_id: MarketId,
     amount: u64,
 ) {
-    let msg = CallMessage::MintShares { market_id, amount };
+    let msg = CallMessage::MintShares {
+        market_id,
+        amount: Size(amount),
+    };
 
     runner.execute_transaction(TransactionTestCase {
         input: user.create_plain_message::<RT, MarketModule<S>>(msg),

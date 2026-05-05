@@ -5,9 +5,9 @@ use market::{MarketModule, Resolver};
 use orderbook::{
     MarketSideKey, Order, OrderbookError, OrderbookModule, PriceLevelKey, UserMarketKey,
 };
-use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
+use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
 use sov_bank::utils::TokenHolder;
-use sov_bank::TokenId;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::SafeString;
 use sov_modules_api::TxEffect;
 use sov_test_utils::runtime::TestRunner;
@@ -153,7 +153,7 @@ pub fn place_order(
         outcome,
         side,
         price,
-        quantity,
+        quantity: Size(quantity),
         order_type,
     };
 
@@ -186,7 +186,7 @@ pub fn place_order_should_fail(
         outcome,
         side,
         price,
-        quantity,
+        quantity: Size(quantity),
         order_type,
     };
 
@@ -407,7 +407,8 @@ pub fn get_locked_collateral(
             .locked_collateral
             .get(&key, state)
             .expect("failed to read locked_collateral")
-            .unwrap_or(0)
+            .unwrap_or(Amount::ZERO)
+            .0 as u64
     })
 }
 
@@ -424,7 +425,7 @@ pub fn get_yes_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id:
             .positions
             .get(&key, state)
             .expect("failed to read position")
-            .map(|p| p.yes_shares)
+            .map(|p| p.yes_shares.0)
             .unwrap_or(0)
     })
 }
@@ -442,7 +443,7 @@ pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: 
             .positions
             .get(&key, state)
             .expect("failed to read position")
-            .map(|p| p.no_shares)
+            .map(|p| p.no_shares.0)
             .unwrap_or(0)
     })
 }

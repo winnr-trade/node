@@ -1,7 +1,7 @@
 use crate::utils::{create_test_market, get_market, get_market_collateral};
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule, MarketStatus, Resolver};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_modules_api::SafeString;
 use sov_test_utils::{AsUser, TransactionTestCase};
 use std::str::FromStr;
@@ -31,7 +31,7 @@ fn test_create_market_success() {
     assert_eq!(market.status(), MarketStatus::Active);
     assert_eq!(market.outcome, None);
     assert_eq!(market.resolver, Resolver::Address(user.address()));
-    assert_eq!(market.total_shares, 0);
+    assert_eq!(market.total_shares, Size::ZERO);
     assert!(
         market.created_at > 0,
         "created_at should be set to current time"

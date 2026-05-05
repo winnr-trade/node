@@ -4,7 +4,7 @@ use crate::utils::{
 };
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule};
-use shared_types::{MarketId, Outcome};
+use shared_types::{MarketId, Outcome, Size};
 use sov_test_utils::{AsUser, TransactionTestCase};
 
 #[test]
@@ -123,8 +123,8 @@ fn test_claim_winnings_unresolved_market_fails() {
 
     // Position should still exist
     let position = get_position(&runner, market_id, &user).expect("position should still exist");
-    assert_eq!(position.yes_shares, 100);
-    assert_eq!(position.no_shares, 100);
+    assert_eq!(position.yes_shares, Size(100));
+    assert_eq!(position.no_shares, Size(100));
 }
 
 #[test]

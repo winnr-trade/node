@@ -2,7 +2,7 @@
 
 use crate::types::Resolver;
 use schemars::JsonSchema;
-use shared_types::{MarketId, Outcome};
+use shared_types::{MarketId, Outcome, Size};
 use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{SafeString, Spec};
@@ -41,7 +41,7 @@ pub enum CallMessage<S: Spec> {
         /// Market to mint shares for.
         market_id: MarketId,
         /// Amount of collateral to deposit (mints equal YES and NO).
-        amount: u64,
+        amount: Size,
     },
 
     /// Redeem pairs of YES and NO shares for collateral.
@@ -49,7 +49,7 @@ pub enum CallMessage<S: Spec> {
         /// Market to redeem from.
         market_id: MarketId,
         /// Number of share pairs to redeem.
-        amount: u64,
+        amount: Size,
     },
 
     /// Transfer YES/NO shares to another holder.
@@ -59,9 +59,9 @@ pub enum CallMessage<S: Spec> {
         /// Recipient address.
         to: S::Address,
         /// YES shares to transfer.
-        yes_amount: u64,
+        yes_amount: Size,
         /// NO shares to transfer.
-        no_amount: u64,
+        no_amount: Size,
     },
 
     /// Resolve a market with a final outcome.

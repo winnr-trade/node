@@ -4,7 +4,7 @@ use crate::{
     SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, Price, Side, Size};
 use sov_bank::{Amount, TokenId};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
@@ -19,7 +19,7 @@ impl<S: Spec> OrderbookModule<S> {
         market_id: MarketId,
         side: Side,
         price: Price,
-        quantity: u64,
+        quantity: Size,
         taker: &S::Address,
         order_type: OrderType,
         collateral_token: &TokenId,
@@ -43,11 +43,11 @@ impl<S: Spec> OrderbookModule<S> {
             .unwrap_or_default();
 
         let mut remaining = quantity;
-        let mut total_filled = 0u64;
+        let mut total_filled = Size::ZERO;
         let mut fills = Vec::new();
 
         for price_level in price_levels {
-            if remaining == 0 {
+            if remaining.is_zero() {
                 break;
             }
 
@@ -65,7 +65,7 @@ impl<S: Spec> OrderbookModule<S> {
                 .unwrap_or_default();
 
             for maker_order_id in order_ids {
-                if remaining == 0 {
+                if remaining.is_zero() {
                     break;
                 }
 
@@ -94,15 +94,15 @@ impl<S: Spec> OrderbookModule<S> {
                     taker_fee: Amount((notional.0 * config.taker_fee_bps as u128) / 10000),
                 });
 
-                remaining -= fill_qty;
-                total_filled += fill_qty;
+                remaining = remaining.saturating_sub(fill_qty);
+                total_filled = total_filled.saturating_add(fill_qty);
             }
         }
 
         Ok(MatchResult {
             fills,
-            total_filled,
-            remaining,
+            total_quantity_filled: total_filled,
+            remaining_quantity: remaining,
         })
     }
 
@@ -160,7 +160,7 @@ impl<S: Spec> OrderbookModule<S> {
                 })?;
 
             // If maker order fully filled, remove from book and user orders.
-            if maker_order.remaining_quantity == 0 {
+            if maker_order.remaining_quantity.is_zero() {
                 maker_order.status = OrderStatus::Filled;
                 self.remove_order(&maker_order, state)?;
             }

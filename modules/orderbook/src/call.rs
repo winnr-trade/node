@@ -1,7 +1,7 @@
 //! Call messages for the orderbook module.
 
 use schemars::JsonSchema;
-use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
+use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
 use shielded_pool::Proof;
 use sov_bank::TokenId;
 use sov_modules_api::{
@@ -26,7 +26,7 @@ pub enum CallMessage<S: Spec> {
         /// Limit price (ignored for Market orders).
         price: Price,
         /// Quantity of shares.
-        quantity: u64,
+        quantity: Size,
         /// Order type.
         order_type: OrderType,
     },
@@ -52,7 +52,7 @@ pub enum CallMessage<S: Spec> {
         /// Limit price (ignored for Market orders).
         price: Price,
         /// Quantity of shares.
-        quantity: u64,
+        quantity: Size,
         /// Order type.
         order_type: OrderType,
     },

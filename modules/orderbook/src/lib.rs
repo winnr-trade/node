@@ -34,7 +34,7 @@ pub use types::*;
 
 // Re-export shared types
 pub use shared_types::{
-    MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, TokenIdExt,
+    MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size, TokenIdExt,
 };
 
 use agent_wallet::AgentWalletModule;

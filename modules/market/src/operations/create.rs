@@ -1,6 +1,6 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule, Resolver};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_bank::TokenId;
 use sov_modules_api::{Context, EventEmitter, SafeString, Spec, TxState};
 use tracing::info;
@@ -80,7 +80,7 @@ impl<S: Spec> MarketModule<S> {
             halted: false,
             outcome: None,
             resolver: resolver.clone(),
-            total_shares: 0,
+            total_shares: Size::ZERO,
             created_at: current_time,
         };
 
