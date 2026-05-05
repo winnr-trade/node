@@ -154,19 +154,23 @@ impl Price {
         Price(Self::BASIS.saturating_sub(self.0))
     }
 
-    /// Calculate cost for a given quantity.
-    /// E.g., 100 shares at price 6500 (0.65) = 65 collateral units.
-    pub fn cost(&self, quantity: u64) -> u64 {
+    /// Calculate cost for a given quantity in collateral base units.
+    ///
+    /// E.g., 100 shares at price 6500 (0.65) with 6 decimals (USDC) = 65,000,000 base units.
+    /// Formula: (quantity * price_bps * 10^decimals) / BASIS
+    pub fn cost(&self, quantity: u64, decimals: u8) -> u64 {
         // Use u128 to avoid overflow
-        ((self.0 as u128 * quantity as u128) / Self::BASIS as u128) as u64
+        let scale = 10u128.pow(decimals as u32);
+        ((self.0 as u128 * quantity as u128 * scale) / Self::BASIS as u128) as u64
     }
 
-    /// Calculate quantity affordable with given collateral.
-    pub fn quantity_for_collateral(&self, collateral: u64) -> u64 {
+    /// Calculate quantity affordable with given collateral in base units.
+    pub fn quantity_for_collateral(&self, collateral: u64, decimals: u8) -> u64 {
         if self.0 == 0 {
             return 0;
         }
-        ((collateral as u128 * Self::BASIS as u128) / self.0 as u128) as u64
+        let scale = 10u128.pow(decimals as u32);
+        ((collateral as u128 * Self::BASIS as u128) / (self.0 as u128 * scale)) as u64
     }
 }
 
@@ -283,11 +287,11 @@ mod tests {
     fn test_price_cost() {
         let price = Price(6500); // 65%
 
-        // 100 shares at 0.65 = 65 collateral
-        assert_eq!(price.cost(100), 65);
+        // 100 shares at 0.65 with 6 decimals = 65,000,000 base units
+        assert_eq!(price.cost(100, 6), 65_000_000);
 
-        // 1000 shares at 0.65 = 650 collateral
-        assert_eq!(price.cost(1000), 650);
+        // 1000 shares at 0.65 with 6 decimals = 650,000,000 base units
+        assert_eq!(price.cost(1000, 6), 650_000_000);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
-use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
+use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule, TokenIdExt};
 use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
@@ -97,7 +97,14 @@ impl<S: Spec> OrderbookModule<S> {
         match order.side {
             Side::Bid => {
                 // BUY order: unlock collateral
-                let locked = order.locked_collateral();
+                let market = self
+                    .market
+                    .markets
+                    .get(&order.market_id, state)
+                    .into_orderbook_err()?
+                    .ok_or(OrderbookError::MarketNotFound { market_id: order.market_id })?;
+                let decimals = market.collateral_token.get_decimals();
+                let locked = order.locked_collateral(decimals);
                 self.unlock_collateral_to(
                     &order.owner,
                     Some(&order.owner),
@@ -187,6 +194,16 @@ impl<S: Spec> OrderbookModule<S> {
             order_type,
         } = order_request;
 
+        // Load market to get collateral decimals
+        let market = self
+            .market
+            .markets
+            .get(&market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound { market_id })?;
+
+        let collateral_decimals = market.collateral_token.get_decimals();
+
         // Normalize to canonical YES-space
         let canonical_order = CanonicalOrder::normalize(outcome, side, price);
 
@@ -215,6 +232,7 @@ impl<S: Spec> OrderbookModule<S> {
             quantity,
             sender,
             order_type,
+            collateral_decimals,
             state,
         )?;
 
@@ -232,7 +250,7 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY order: lock collateral at limit price
-                let required_collateral = canonical_order.required_collateral(quantity);
+                let required_collateral = canonical_order.required_collateral(quantity, collateral_decimals);
                 self.lock_collateral(sender, market_id, required_collateral, state)?;
             }
             Side::Ask => {
@@ -256,13 +274,13 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY: refund price improvement collateral
-                let total_required_collateral = canonical_order.required_collateral(quantity);
+                let total_required_collateral = canonical_order.required_collateral(quantity, collateral_decimals);
                 let total_used_collateral: u64 = match_result
                     .fills
                     .iter()
                     .map(|f| match canonical_order.side {
-                        Side::Bid => f.price.cost(f.quantity),
-                        Side::Ask => f.price.complement().cost(f.quantity),
+                        Side::Bid => f.price.cost(f.quantity, collateral_decimals),
+                        Side::Ask => f.price.complement().cost(f.quantity, collateral_decimals),
                     })
                     .sum();
 
@@ -280,7 +298,7 @@ impl<S: Spec> OrderbookModule<S> {
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
                     let required_remaining_collateral =
-                        canonical_order.required_collateral(match_result.remaining);
+                        canonical_order.required_collateral(match_result.remaining, collateral_decimals);
 
                     if remaining_collateral > required_remaining_collateral {
                         self.unlock_collateral_to(

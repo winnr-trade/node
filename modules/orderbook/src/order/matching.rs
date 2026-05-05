@@ -21,6 +21,7 @@ impl<S: Spec> OrderbookModule<S> {
         quantity: u64,
         taker: &S::Address,
         order_type: OrderType,
+        collateral_decimals: u8,
         state: &mut impl TxState<S>,
     ) -> Result<MatchResult, OrderbookError> {
         let opposite_side = side.opposite();
@@ -82,7 +83,7 @@ impl<S: Spec> OrderbookModule<S> {
 
                 let fill_qty = remaining.min(maker_order.remaining_quantity);
                 let fill_price = maker_order.canonical_price;
-                let notional = fill_price.cost(fill_qty);
+                let notional = fill_price.cost(fill_qty, collateral_decimals);
 
                 fills.push(Fill {
                     order_id: maker_order_id,

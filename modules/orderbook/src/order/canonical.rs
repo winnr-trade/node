@@ -32,14 +32,14 @@ impl CanonicalOrder {
 
     /// Calculate collateral required for this canonical order and quantity.
     ///
-    /// - Canonical bid (buying YES): locks `canonical_price * qty / BASIS`
-    /// - Canonical ask (selling YES): locks `(BASIS - canonical_price) * qty / BASIS`
+    /// - Canonical bid (buying YES): locks `canonical_price * qty * 10^decimals / BASIS`
+    /// - Canonical ask (selling YES): locks `(BASIS - canonical_price) * qty * 10^decimals / BASIS`
     ///
-    /// The sum of both sides = qty, which is exactly the cost to mint one YES+NO pair per unit.
-    pub fn required_collateral(&self, quantity: u64) -> u64 {
+    /// The sum of both sides = qty * 10^decimals, which is exactly the cost to mint one YES+NO pair per unit.
+    pub fn required_collateral(&self, quantity: u64, decimals: u8) -> u64 {
         match self.side {
-            Side::Bid => self.price.cost(quantity),
-            Side::Ask => self.price.complement().cost(quantity),
+            Side::Bid => self.price.cost(quantity, decimals),
+            Side::Ask => self.price.complement().cost(quantity, decimals),
         }
     }
 }
@@ -90,16 +90,17 @@ mod tests {
     fn test_collateral_bid_plus_ask_equals_quantity() {
         let price = Price(6000);
         let qty = 1000;
+        let decimals = 0; // Use 0 decimals for this test
         let bid_col = CanonicalOrder {
             side: Side::Bid,
             price,
         }
-        .required_collateral(qty);
+        .required_collateral(qty, decimals);
         let ask_col = CanonicalOrder {
             side: Side::Ask,
             price,
         }
-        .required_collateral(qty);
+        .required_collateral(qty, decimals);
         // bid(6000*1000/10000=600) + ask(4000*1000/10000=400) = 1000 = qty
         assert_eq!(bid_col + ask_col, qty);
     }

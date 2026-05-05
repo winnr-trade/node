@@ -37,10 +37,28 @@ pub use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, P
 
 use agent_wallet::AgentWalletModule;
 use market::MarketModule;
+use sov_bank::TokenId;
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
     TxState,
 };
+
+// ============================================================================
+// EXTENSIONS
+// ============================================================================
+
+/// Extension trait to extract decimals from TokenId hash.
+/// Decimals are stored at byte [31] of the 32-byte hash.
+pub trait TokenIdExt {
+    /// Get token decimals from the TokenId hash.
+    fn get_decimals(&self) -> u8;
+}
+
+impl TokenIdExt for TokenId {
+    fn get_decimals(&self) -> u8 {
+        self.as_ref()[31]
+    }
+}
 
 /// Orderbook Module — unified canonical YES-space CLOB.
 #[derive(Clone, ModuleInfo, ModuleRestApi)]

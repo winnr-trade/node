@@ -79,13 +79,13 @@ impl<S: Spec> Order<S> {
     ///
     /// Only meaningful for BUY orders (`side == Side::Bid`). For SELL orders,
     /// shares are reserved instead of collateral — use `remaining_quantity` directly.
-    pub fn locked_collateral(&self) -> u64 {
+    pub fn locked_collateral(&self, decimals: u8) -> u64 {
         match self.canonical_side {
-            Side::Bid => self.canonical_price.cost(self.remaining_quantity),
+            Side::Bid => self.canonical_price.cost(self.remaining_quantity, decimals),
             Side::Ask => self
                 .canonical_price
                 .complement()
-                .cost(self.remaining_quantity),
+                .cost(self.remaining_quantity, decimals),
         }
     }
 }
