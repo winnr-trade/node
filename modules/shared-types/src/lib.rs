@@ -124,18 +124,28 @@ impl Price {
     /// Price basis (10000 = 100%).
     pub const BASIS: u64 = 10000;
 
-    /// Create a new price, returning None if out of valid range.
-    pub fn new(value: u64) -> Option<Self> {
-        if value >= Self::MIN.0 && value <= Self::MAX.0 {
-            Some(Price(value))
+    /// Create a new price, returning an error if out of valid range.
+    pub fn new(value: u64) -> Result<Self, anyhow::Error> {
+        if Self::is_valid_value(value) {
+            Ok(Price(value))
         } else {
-            None
+            Err(anyhow::anyhow!(
+                "Invalid price {}, expected {}..={}",
+                value,
+                Self::MIN.0,
+                Self::MAX.0
+            ))
         }
     }
 
-    /// Check if price is within tradeable range (1-9999).
+    /// Check if a raw price value is within tradeable range (1-9999).
     pub fn is_valid(&self) -> bool {
-        *self >= Self::MIN && *self <= Self::MAX
+        Self::is_valid_value(self.0)
+    }
+
+    /// Check if a raw price value is within tradeable range (1-9999).
+    pub fn is_valid_value(value: u64) -> bool {
+        value >= Self::MIN.0 && value <= Self::MAX.0
     }
 
     /// Get the complementary price.
@@ -171,7 +181,7 @@ impl FromStr for Price {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value = u64::from_str(s)?;
-        Ok(Price(value))
+        Self::new(value)
     }
 }
 
@@ -281,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn test_price_validation() {
+    fn test_price_is_valid() {
         assert!(Price(1).is_valid());
         assert!(Price(5000).is_valid());
         assert!(Price(9999).is_valid());
@@ -289,6 +299,24 @@ mod tests {
         assert!(!Price(0).is_valid());
         assert!(!Price(10000).is_valid());
         assert!(!Price(10001).is_valid());
+    }
+
+    #[test]
+    fn test_price_is_valid_value() {
+        assert!(Price::is_valid_value(1));
+        assert!(Price::is_valid_value(5000));
+        assert!(Price::is_valid_value(9999));
+
+        assert!(!Price::is_valid_value(0));
+        assert!(!Price::is_valid_value(10000));
+        assert!(!Price::is_valid_value(10001));
+    }
+
+    #[test]
+    fn test_price_new_validation() {
+        assert_eq!(Price::new(1).unwrap(), Price(1));
+        assert!(Price::new(0).is_err());
+        assert!(Price::new(10000).is_err());
     }
 
     #[test]
