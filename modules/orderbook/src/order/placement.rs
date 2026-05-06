@@ -107,6 +107,8 @@ impl<S: Spec> OrderbookModule<S> {
                     order.market_id,
                     order.outcome,
                     unfilled,
+                    Amount::ZERO,
+                    Amount::ZERO,
                     state,
                 )?;
             }
@@ -238,7 +240,7 @@ impl<S: Spec> OrderbookModule<S> {
                 // BUY order: lock collateral at limit price
                 let required_collateral =
                     canonical_order.required_collateral(quantity, &collateral_token);
-                self.lock_collateral(sender, market_id, required_collateral, state)?;
+                self.lock_collateral_from(sender, market_id, required_collateral, state)?;
             }
             Side::Ask => {
                 // SELL order: reserve shares of the outcome being sold
@@ -336,7 +338,16 @@ impl<S: Spec> OrderbookModule<S> {
                 } else if !match_result.remaining_quantity.is_zero() {
                     // IOC/Market/no fills: unlock unfilled shares
                     let to_unreserve = match_result.remaining_quantity;
-                    self.unlock_shares_to(sender, None, market_id, outcome, to_unreserve, state)?;
+                    self.unlock_shares_to(
+                        sender,
+                        None,
+                        market_id,
+                        outcome,
+                        to_unreserve,
+                        Amount::ZERO,
+                        Amount::ZERO,
+                        state,
+                    )?;
                 }
             }
         }

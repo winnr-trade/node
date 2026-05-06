@@ -1,5 +1,5 @@
 use crate::error::IntoMarketError;
-use crate::{Event, MarketError, MarketModule, PositionKey};
+use crate::{Event, MarketError, MarketModule, PositionKey, PositionUpdateSource};
 use shared_types::{MarketId, Outcome, Price, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable};
@@ -53,8 +53,15 @@ impl<S: Spec> MarketModule<S> {
 
         let payout_amount = Price::ONE.cost(payout, &market.collateral_token);
 
-        // Remove position and accessory index membership.
-        self.remove_position(market_id, ctx.sender(), state)?;
+        // Remove position via sub so PositionUpdated is emitted.
+        self.sub_position_shares_from(
+            market_id,
+            &TokenHolder::User(ctx.sender().clone()),
+            position.yes_shares,
+            position.no_shares,
+            PositionUpdateSource::Claim,
+            state,
+        )?;
 
         // Update collateral tracking
         let current_collateral = self

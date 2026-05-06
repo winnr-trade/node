@@ -10,7 +10,8 @@ use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
-    /// Add an order to the canonical book.
+    /// Adds an order to the canonical book, updating price levels, user order lists,
+    /// and best bid/ask as needed.
     pub(crate) fn add_order(
         &mut self,
         order: &Order<S>,
@@ -48,6 +49,8 @@ impl<S: Spec> OrderbookModule<S> {
         Ok(())
     }
 
+    /// Removes an order from the canonical book, updating price levels, user order lists,
+    /// and best bid/ask as needed.
     pub(crate) fn remove_order(
         &mut self,
         order: &Order<S>,
@@ -144,17 +147,17 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::MarketNotFound { market_id })?;
 
         let qty = fill.quantity;
-        let token = &market.collateral_token;
+        let collateral_token = &market.collateral_token;
 
         // Calculate total expected cost for minting the pair
-        let scale = 10u128.pow(token.get_decimals() as u32);
+        let scale = 10u128.pow(collateral_token.get_decimals() as u32);
         let expected_total_cost = Amount::from(qty.0)
             .checked_mul(Amount(scale))
             .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
 
         // Split total cost according to execution price: buyer pays according to fill price
         // and seller pays complement.
-        let buyer_cost = fill.price.cost(qty, token);
+        let buyer_cost = fill.price.cost(qty, collateral_token);
         let seller_cost = expected_total_cost.checked_sub(buyer_cost).ok_or_else(|| {
             OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
         })?;
@@ -195,6 +198,7 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?;
 
         // Distribute minted shares to counterparties.
+        // Buyer receives YES shares at the execution price; seller receives NO at the complement.
         self.market
             .transfer_shares_from(
                 market_id,
@@ -202,6 +206,8 @@ impl<S: Spec> OrderbookModule<S> {
                 canonical_buyer,
                 qty,
                 Size::ZERO,
+                buyer_cost,
+                Amount::ZERO,
                 state,
             )
             .into_orderbook_err()?;
@@ -212,6 +218,8 @@ impl<S: Spec> OrderbookModule<S> {
                 canonical_seller,
                 Size::ZERO,
                 qty,
+                Amount::ZERO,
+                seller_cost,
                 state,
             )
             .into_orderbook_err()?;
@@ -241,6 +249,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         let qty = fill.quantity;
         let token = &market.collateral_token;
+        let buyer_cost = fill.price.cost(qty, token);
 
         // Unlock and transfer YES shares: seller -> buyer.
         self.unlock_shares_to(
@@ -249,11 +258,12 @@ impl<S: Spec> OrderbookModule<S> {
             market_id,
             OutcomeSide::Yes,
             qty,
+            buyer_cost,
+            Amount::ZERO,
             state,
         )?;
 
         // Unlock and transfer collateral: buyer -> seller
-        let buyer_cost = fill.price.cost(qty, token);
         self.unlock_collateral_to(
             canonical_buyer,
             Some(canonical_seller),
@@ -287,6 +297,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         let qty = fill.quantity;
         let token = &market.collateral_token;
+        let seller_cost = fill.price.complement().cost(qty, token);
 
         // Unlock and transfer NO shares: canonical buyer -> canonical seller.
         self.unlock_shares_to(
@@ -295,11 +306,12 @@ impl<S: Spec> OrderbookModule<S> {
             market_id,
             OutcomeSide::No,
             qty,
+            Amount::ZERO,
+            seller_cost,
             state,
         )?;
 
         // Release canonical seller's collateral (they are BUY NO, consumed as payment)
-        let seller_cost = fill.price.complement().cost(qty, token);
         self.unlock_collateral_to(
             canonical_seller,
             Some(canonical_buyer),
@@ -339,13 +351,15 @@ impl<S: Spec> OrderbookModule<S> {
             .checked_mul(Amount(scale))
             .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
 
-        // Unreserve shares from both sides
+        // Unreserve shares from both sides (no recipient — shares stay with owners until transfer).
         self.unlock_shares_to(
             canonical_buyer,
             None,
             market_id,
             OutcomeSide::No,
             qty,
+            Amount::ZERO,
+            Amount::ZERO,
             state,
         )?;
         self.unlock_shares_to(
@@ -354,10 +368,13 @@ impl<S: Spec> OrderbookModule<S> {
             market_id,
             OutcomeSide::Yes,
             qty,
+            Amount::ZERO,
+            Amount::ZERO,
             state,
         )?;
 
-        // Move the pair into orderbook custody
+        // Move the pair into orderbook custody for burning.
+        // to = orderbook module (not a user) — PositionUpdated fires only for the `from` side.
         self.market
             .transfer_shares_from(
                 market_id,
@@ -365,6 +382,8 @@ impl<S: Spec> OrderbookModule<S> {
                 self.id.to_payable(),
                 Size::ZERO,
                 qty,
+                Amount::ZERO,
+                Amount::ZERO,
                 state,
             )
             .into_orderbook_err()?;
@@ -375,6 +394,8 @@ impl<S: Spec> OrderbookModule<S> {
                 self.id.to_payable(),
                 qty,
                 Size::ZERO,
+                Amount::ZERO,
+                Amount::ZERO,
                 state,
             )
             .into_orderbook_err()?;

@@ -44,11 +44,11 @@ pub enum CallMessage<S: Spec> {
         amount: Size,
     },
 
-    /// Redeem pairs of YES and NO shares for collateral.
-    RedeemShares {
-        /// Market to redeem from.
+    /// Burn pairs of YES and NO shares for collateral.
+    BurnShares {
+        /// Market to burn from.
         market_id: MarketId,
-        /// Number of share pairs to redeem.
+        /// Number of share pairs to burn.
         amount: Size,
     },
 

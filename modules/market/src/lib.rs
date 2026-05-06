@@ -25,7 +25,7 @@ pub use query::*;
 
 pub use call::{CallMessage, ResolutionData};
 pub use error::MarketError;
-pub use event::Event;
+pub use event::{Event, PositionUpdateSource};
 pub use genesis::MarketGenesisConfig;
 use sov_chain_state::ChainState;
 pub use types::*;
@@ -130,7 +130,7 @@ impl<S: Spec> Module for MarketModule<S> {
                 self.mint_shares(market_id, amount, ctx, state)
             }
 
-            CallMessage::RedeemShares { market_id, amount } => {
+            CallMessage::BurnShares { market_id, amount } => {
                 self.burn_shares(market_id, amount, ctx, state)
             }
 

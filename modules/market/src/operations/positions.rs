@@ -1,8 +1,8 @@
 use crate::error::IntoMarketError;
-use crate::{MarketError, MarketModule, PositionKey};
+use crate::{Event, MarketError, MarketModule, PositionKey, PositionUpdateSource};
 use shared_types::{MarketId, MarketStatus, Size};
-use sov_bank::utils::TokenHolder;
-use sov_modules_api::{Spec, TxState};
+use sov_bank::{utils::TokenHolder, Amount};
+use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> MarketModule<S> {
     /// Add shares to a user's position and keep the user->markets index in sync.
@@ -10,30 +10,40 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
-        yes_add: Size,
-        no_add: Size,
+        delta_yes: Size,
+        delta_no: Size,
+        cost_yes: Amount,
+        cost_no: Amount,
+        reason: PositionUpdateSource,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let owner = TokenHolder::User(user_address.clone());
-        self.add_position_shares_for_owner(market_id, &owner, yes_add, no_add, state)
+        self.add_position_shares_to(
+            market_id, &owner, delta_yes, delta_no, cost_yes, cost_no, reason, state,
+        )
     }
 
     /// Add shares to an arbitrary owner position.
-    pub(crate) fn add_position_shares_for_owner(
+    ///
+    /// Emits `PositionUpdated` only for `TokenHolder::User` owners.
+    pub(crate) fn add_position_shares_to(
         &mut self,
         market_id: MarketId,
-        owner: &TokenHolder<S>,
-        yes_add: Size,
-        no_add: Size,
+        to: &TokenHolder<S>,
+        delta_yes: Size,
+        delta_no: Size,
+        cost_yes: Amount,
+        cost_no: Amount,
+        reason: PositionUpdateSource,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if yes_add.is_zero() && no_add.is_zero() {
+        if delta_yes.is_zero() && delta_no.is_zero() {
             return Ok(());
         }
 
         let position_key = PositionKey {
             market_id,
-            owner: owner.clone(),
+            owner: to.clone(),
         };
         let mut position = self
             .positions
@@ -43,18 +53,31 @@ impl<S: Spec> MarketModule<S> {
 
         position.yes_shares = position
             .yes_shares
-            .checked_add(yes_add)
+            .checked_add(delta_yes)
             .ok_or_else(|| anyhow::anyhow!("Overflow in yes_shares"))?;
         position.no_shares = position
             .no_shares
-            .checked_add(no_add)
+            .checked_add(delta_no)
             .ok_or_else(|| anyhow::anyhow!("Overflow in no_shares"))?;
 
         self.positions
             .set(&position_key, &position, state)
             .into_market_err()?;
-        if let TokenHolder::User(user_address) = owner {
+
+        if let TokenHolder::User(user_address) = to {
             self.add_user_active_market(user_address, market_id, state)?;
+            self.emit_event(
+                state,
+                Event::PositionUpdated {
+                    market_id,
+                    user_address: user_address.to_string(),
+                    yes_delta: delta_yes.0 as i64,
+                    no_delta: delta_no.0 as i64,
+                    cost_yes_added: cost_yes,
+                    cost_no_added: cost_no,
+                    update_source: reason,
+                },
+            );
         }
 
         Ok(())
@@ -65,30 +88,35 @@ impl<S: Spec> MarketModule<S> {
         &mut self,
         market_id: MarketId,
         user_address: &S::Address,
-        yes_sub: Size,
-        no_sub: Size,
+        delta_yes: Size,
+        delta_no: Size,
+        reason: PositionUpdateSource,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let owner = TokenHolder::User(user_address.clone());
-        self.sub_position_shares_for_owner(market_id, &owner, yes_sub, no_sub, state)
+        self.sub_position_shares_from(market_id, &owner, delta_yes, delta_no, reason, state)
     }
 
     /// Subtract shares from an arbitrary owner position.
-    pub(crate) fn sub_position_shares_for_owner(
+    ///
+    /// Emits `PositionUpdated` only for `TokenHolder::User` owners.
+    /// Cost reduction for disposals is handled by the indexer (proportional to current position).
+    pub(crate) fn sub_position_shares_from(
         &mut self,
         market_id: MarketId,
-        owner: &TokenHolder<S>,
-        yes_sub: Size,
-        no_sub: Size,
+        from: &TokenHolder<S>,
+        delta_yes: Size,
+        delta_no: Size,
+        reason: PositionUpdateSource,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
-        if yes_sub.is_zero() && no_sub.is_zero() {
+        if delta_yes.is_zero() && delta_no.is_zero() {
             return Ok(());
         }
 
         let position_key = PositionKey {
             market_id,
-            owner: owner.clone(),
+            owner: from.clone(),
         };
         let mut position = self
             .positions
@@ -96,30 +124,54 @@ impl<S: Spec> MarketModule<S> {
             .into_market_err()?
             .ok_or(MarketError::NoPosition { market_id })?;
 
-        if position.yes_shares < yes_sub || position.no_shares < no_sub {
+        if position.yes_shares < delta_yes || position.no_shares < delta_no {
             return Err(MarketError::InsufficientShares {
-                required: yes_sub.max(no_sub),
+                required: delta_yes.max(delta_no),
                 available_yes: position.yes_shares,
                 available_no: position.no_shares,
             });
         }
 
-        position.yes_shares = position.yes_shares.saturating_sub(yes_sub);
-        position.no_shares = position.no_shares.saturating_sub(no_sub);
+        position.yes_shares = position.yes_shares.saturating_sub(delta_yes);
+        position.no_shares = position.no_shares.saturating_sub(delta_no);
 
         if position.is_empty() {
             self.positions
                 .remove(&position_key, state)
                 .into_market_err()?;
-            if let TokenHolder::User(user_address) = owner {
+            if let TokenHolder::User(user_address) = from {
                 self.remove_user_active_market(user_address, market_id, state)?;
+                self.emit_event(
+                    state,
+                    Event::PositionUpdated {
+                        market_id,
+                        user_address: user_address.to_string(),
+                        yes_delta: -(delta_yes.0 as i64),
+                        no_delta: -(delta_no.0 as i64),
+                        cost_yes_added: Amount::ZERO,
+                        cost_no_added: Amount::ZERO,
+                        update_source: reason,
+                    },
+                );
             }
         } else {
             self.positions
                 .set(&position_key, &position, state)
                 .into_market_err()?;
-            if let TokenHolder::User(user_address) = owner {
+            if let TokenHolder::User(user_address) = from {
                 self.add_user_active_market(user_address, market_id, state)?;
+                self.emit_event(
+                    state,
+                    Event::PositionUpdated {
+                        market_id,
+                        user_address: user_address.to_string(),
+                        yes_delta: -(delta_yes.0 as i64),
+                        no_delta: -(delta_no.0 as i64),
+                        cost_yes_added: Amount::ZERO,
+                        cost_no_added: Amount::ZERO,
+                        update_source: reason,
+                    },
+                );
             }
         }
 
@@ -134,25 +186,25 @@ impl<S: Spec> MarketModule<S> {
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let owner = TokenHolder::User(user_address.clone());
-        self.remove_position_for_owner(market_id, &owner, state)
+        self.remove_position_from(market_id, &owner, state)
     }
 
     /// Remove an arbitrary owner position and index membership when applicable.
-    pub(crate) fn remove_position_for_owner(
+    pub(crate) fn remove_position_from(
         &mut self,
         market_id: MarketId,
-        owner: &TokenHolder<S>,
+        from: &TokenHolder<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let position_key = PositionKey {
             market_id,
-            owner: owner.clone(),
+            owner: from.clone(),
         };
         self.positions
             .remove(&position_key, state)
             .into_market_err()?;
 
-        if let TokenHolder::User(user_address) = owner {
+        if let TokenHolder::User(user_address) = from {
             self.remove_user_active_market(user_address, market_id, state)?;
         }
 

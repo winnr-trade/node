@@ -7,10 +7,11 @@ use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
-    /// Lock collateral for a BUY order and transfer it into the module account.
-    pub(crate) fn lock_collateral(
+    /// Transfer collateral from a user to the module and lock it in accounting
+    /// for the given market.
+    pub(crate) fn lock_collateral_from(
         &mut self,
-        user: &S::Address,
+        owner: &S::Address,
         market_id: MarketId,
         amount: Amount,
         state: &mut impl TxState<S>,
@@ -28,7 +29,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         self.bank
             .transfer_from(
-                user,
+                owner,
                 self.id.to_payable(),
                 Coins {
                     amount,
@@ -39,7 +40,7 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?;
 
         let key = UserMarketKey {
-            address: user.clone(),
+            address: owner.clone(),
             market_id,
         };
         let current = self
@@ -63,7 +64,7 @@ impl<S: Spec> OrderbookModule<S> {
     /// If `recipient` is `None`, collateral is only unlocked from accounting.
     pub(crate) fn unlock_collateral_to(
         &mut self,
-        locked_owner: &S::Address,
+        owner: &S::Address,
         recipient: Option<impl Payable<S>>,
         market_id: MarketId,
         amount: Amount,
@@ -74,7 +75,7 @@ impl<S: Spec> OrderbookModule<S> {
         }
 
         let key = UserMarketKey {
-            address: locked_owner.clone(),
+            address: owner.clone(),
             market_id,
         };
         let current = self
@@ -200,6 +201,8 @@ impl<S: Spec> OrderbookModule<S> {
     /// Unreserve shares for the given outcome and optionally transfer them.
     ///
     /// If `recipient` is `None`, shares are only unlocked from accounting.
+    /// `to_cost_yes` / `to_cost_no` are forwarded to `transfer_shares_from` as the acquisition
+    /// cost for the recipient. Ignored when `recipient` is `None`.
     pub(crate) fn unlock_shares_to(
         &mut self,
         owner: &S::Address,
@@ -207,6 +210,8 @@ impl<S: Spec> OrderbookModule<S> {
         market_id: MarketId,
         outcome: OutcomeSide,
         amount: Size,
+        cost_yes: Amount,
+        cost_no: Amount,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
         if amount.is_zero() {
@@ -261,7 +266,9 @@ impl<S: Spec> OrderbookModule<S> {
 
         if let Some(recipient) = recipient {
             self.market
-                .transfer_shares_from(market_id, owner, recipient, delta_yes, delta_no, state)
+                .transfer_shares_from(
+                    market_id, owner, recipient, delta_yes, delta_no, cost_yes, cost_no, state,
+                )
                 .into_orderbook_err()?;
         }
 

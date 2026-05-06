@@ -7,6 +7,30 @@ use shared_types::{MarketId, MarketStatus, Outcome, Size};
 use sov_bank::{Amount, TokenId};
 use sov_modules_api::SafeString;
 
+/// Reason a position changed — for audit purposes.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum PositionUpdateSource {
+    /// Shares moved via the orderbook (any settlement kind).
+    Trade,
+    /// User minted a YES+NO pair directly.
+    Mint,
+    /// User burned a YES+NO pair directly.
+    Burn,
+    /// User claimed winnings from a resolved market.
+    Claim,
+}
+
 /// Events emitted by the prediction market module.
 #[derive(
     Clone,
@@ -46,9 +70,9 @@ pub enum Event {
         amount: Size,
     },
 
-    /// Shares were redeemed.
+    /// Shares were burned.
     /// `amount` YES+NO share pairs were burned; the same quantity of collateral was returned.
-    SharesRedeemed {
+    SharesBurned {
         market_id: MarketId,
         user: String,
         amount: Size,
@@ -76,5 +100,24 @@ pub enum Event {
         user: String,
         winning_shares: Size,
         payout: Amount,
+    },
+
+    /// A user's position was updated.
+    ///
+    /// Emitted for every share acquisition or disposal on a user address.
+    /// `yes_delta` / `no_delta` are signed: positive = acquired, negative = disposed.
+    /// `cost_yes_added` / `cost_no_added` carry the collateral spent on acquisitions only;
+    /// they are zero for disposals — the indexer applies a proportional cost reduction using
+    /// its own tracked state.
+    PositionUpdated {
+        market_id: MarketId,
+        user_address: String,
+        yes_delta: i64,
+        no_delta: i64,
+        /// Collateral cost for YES shares acquired in this event (0 for disposals).
+        cost_yes_added: Amount,
+        /// Collateral cost for NO shares acquired in this event (0 for disposals).
+        cost_no_added: Amount,
+        update_source: PositionUpdateSource,
     },
 }

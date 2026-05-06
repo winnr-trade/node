@@ -23,7 +23,7 @@ fn test_redeem_shares_success() {
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
         amount: Size(50),
     };
@@ -67,7 +67,7 @@ fn test_redeem_all_shares() {
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
         amount: Size(100),
     };
@@ -111,7 +111,7 @@ fn test_redeem_more_than_owned_fails() {
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
         amount: Size(200),
     };
@@ -132,7 +132,7 @@ fn test_redeem_shares_nonexistent_market_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id: MarketId(999),
         amount: Size(100),
     };
@@ -164,7 +164,7 @@ fn test_redeem_zero_amount_fails() {
     );
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
         amount: Size::ZERO,
     };
