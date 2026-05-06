@@ -34,7 +34,7 @@ fn test_mint_shares_success() {
     assert_eq!(position.no_shares, Size(100));
 
     // Verify collateral tracking
-    assert_eq!(get_market_collateral(&runner, market_id), 100);
+    assert_eq!(get_market_collateral(&runner, market_id), 100_000_000);
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn test_mint_shares_multiple_times() {
     assert_eq!(position.yes_shares, Size(350));
     assert_eq!(position.no_shares, Size(350));
 
-    assert_eq!(get_market_collateral(&runner, market_id), 350);
+    assert_eq!(get_market_collateral(&runner, market_id), 350_000_000);
 }
 
 #[test]
@@ -150,5 +150,5 @@ fn test_mint_shares_different_users() {
     // Verify combined market totals
     let market = get_market(&runner, market_id);
     assert_eq!(market.total_shares, Size(300));
-    assert_eq!(get_market_collateral(&runner, market_id), 300);
+    assert_eq!(get_market_collateral(&runner, market_id), 300_000_000);
 }

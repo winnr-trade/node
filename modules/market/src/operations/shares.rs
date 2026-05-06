@@ -1,6 +1,6 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule};
-use shared_types::{MarketId, MarketStatus, Size};
+use shared_types::{MarketId, MarketStatus, Price, Size};
 use sov_bank::{Amount, Coins, IntoPayable, Payable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
 use tracing::info;
@@ -22,7 +22,7 @@ impl<S: Spec> MarketModule<S> {
         let mut market = self.get_active_market(market_id, state)?;
 
         // Transfer collateral from the holder into market module custody.
-        let collateral_amount = Amount(amount.0 as u128);
+        let collateral_amount = Price::ONE.cost(amount, &market.collateral_token);
         self.bank
             .transfer_from(
                 to,
@@ -49,9 +49,12 @@ impl<S: Spec> MarketModule<S> {
             .market_collateral
             .get(&market_id, state)
             .into_market_err()?
-            .unwrap_or(0);
+            .unwrap_or(Amount::ZERO);
+        let new_collateral = current_collateral
+            .checked_add(collateral_amount)
+            .ok_or_else(|| anyhow::anyhow!("Overflow in market_collateral"))?;
         self.market_collateral
-            .set(&market_id, &(current_collateral + amount.0), state)
+            .set(&market_id, &new_collateral, state)
             .into_market_err()?;
 
         // Update owner position and accessory index for users.
@@ -105,6 +108,7 @@ impl<S: Spec> MarketModule<S> {
             .markets
             .get_or_err(&market_id, state)
             .into_market_err_flat()?;
+        let collateral_amount = Price::ONE.cost(amount, &market.collateral_token);
 
         // Can redeem from active or halted markets, not resolved
         if market.outcome.is_some() {
@@ -125,13 +129,12 @@ impl<S: Spec> MarketModule<S> {
             .market_collateral
             .get(&market_id, state)
             .into_market_err()?
-            .unwrap_or(0);
+            .unwrap_or(Amount::ZERO);
+        let new_collateral = current_collateral
+            .checked_sub(collateral_amount)
+            .ok_or_else(|| anyhow::anyhow!("Underflow in market_collateral"))?;
         self.market_collateral
-            .set(
-                &market_id,
-                &current_collateral.saturating_sub(amount.0),
-                state,
-            )
+            .set(&market_id, &new_collateral, state)
             .into_market_err()?;
 
         // Transfer collateral back to holder.
@@ -140,7 +143,7 @@ impl<S: Spec> MarketModule<S> {
                 self.id.to_payable(),
                 from,
                 Coins {
-                    amount: Amount(amount.0 as u128),
+                    amount: collateral_amount,
                     token_id: market.collateral_token,
                 },
                 state,

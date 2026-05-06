@@ -5,7 +5,7 @@ use market::ResolutionData;
 use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
 use shared_types::{MarketId, Outcome, Size};
 use sov_bank::utils::TokenHolder;
-use sov_bank::TokenId;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::da::Time;
 use sov_modules_api::SafeString;
 use sov_test_utils::runtime::TestRunner;
@@ -150,7 +150,7 @@ pub fn get_position(
 }
 
 /// Query total collateral held for a market.
-pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u64 {
+pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u128 {
     runner.query_state(|state| {
         runner
             .runtime()
@@ -158,7 +158,8 @@ pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) ->
             .market_collateral
             .get(&market_id, state)
             .expect("failed to read market_collateral state")
-            .unwrap_or(0)
+            .unwrap_or(Amount::ZERO)
+            .0
     })
 }
 

@@ -35,22 +35,7 @@ impl<S: Spec> OrderbookModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        // Withdraw from shielded pool to a stealth address
-        self.shielded_pool
-            .withdraw_to(
-                proof,
-                commitment,
-                nullifier,
-                token_id,
-                order_request.quantity.0,
-                stealth_address,
-                ctx,
-                state,
-            )
-            .ok()
-            .unwrap();
-
-        self.place_order(order_request, &*stealth_address, state)
+        unimplemented!("Stealth orders call not open yet");
     }
 
     /// Cancel an order.

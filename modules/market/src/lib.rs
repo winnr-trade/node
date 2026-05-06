@@ -33,7 +33,7 @@ pub use types::*;
 // Re-export shared types for convenience
 pub use shared_types::{MarketId, MarketStatus, Outcome};
 
-use sov_bank::{Bank, TokenId};
+use sov_bank::{Amount, Bank, TokenId};
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
     TxState,
@@ -75,7 +75,7 @@ pub struct MarketModule<S: Spec> {
 
     /// Total collateral held by the module per market.
     #[state]
-    pub market_collateral: StateMap<MarketId, u64>,
+    pub market_collateral: StateMap<MarketId, Amount>,
 
     /// Bank module for token operations
     #[module]

@@ -1,6 +1,6 @@
 use crate::error::IntoMarketError;
 use crate::{Event, MarketError, MarketModule, PositionKey};
-use shared_types::{MarketId, Outcome, Size};
+use shared_types::{MarketId, Outcome, Price, Size};
 use sov_bank::utils::TokenHolder;
 use sov_bank::{Amount, Coins, IntoPayable};
 use sov_modules_api::{Context, EventEmitter, Spec, TxState};
@@ -51,6 +51,8 @@ impl<S: Spec> MarketModule<S> {
             return Err(MarketError::NoWinningsToClaim { market_id });
         }
 
+        let payout_amount = Price::ONE.cost(payout, &market.collateral_token);
+
         // Remove position and accessory index membership.
         self.remove_position(market_id, ctx.sender(), state)?;
 
@@ -59,13 +61,12 @@ impl<S: Spec> MarketModule<S> {
             .market_collateral
             .get(&market_id, state)
             .into_market_err()?
-            .unwrap_or(0);
+            .unwrap_or(Amount::ZERO);
+        let new_collateral = current_collateral
+            .checked_sub(payout_amount)
+            .ok_or_else(|| anyhow::anyhow!("Underflow in market_collateral"))?;
         self.market_collateral
-            .set(
-                &market_id,
-                &current_collateral.saturating_sub(payout.0),
-                state,
-            )
+            .set(&market_id, &new_collateral, state)
             .into_market_err()?;
 
         // Transfer winnings
@@ -74,7 +75,7 @@ impl<S: Spec> MarketModule<S> {
                 self.id.to_payable(),
                 ctx.sender(),
                 Coins {
-                    amount: Amount(payout.0 as u128),
+                    amount: payout_amount,
                     token_id: market.collateral_token,
                 },
                 state,
@@ -95,7 +96,7 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 user: ctx.sender().to_string(),
                 winning_shares,
-                payout: Amount(payout.0 as u128),
+                payout: payout_amount,
             },
         );
 

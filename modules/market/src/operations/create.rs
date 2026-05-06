@@ -1,7 +1,7 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule, Resolver};
 use shared_types::{MarketId, Size};
-use sov_bank::TokenId;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{Context, EventEmitter, SafeString, Spec, TxState};
 use tracing::info;
 
@@ -88,7 +88,7 @@ impl<S: Spec> MarketModule<S> {
             .set(&market_id, &market, state)
             .into_market_err()?;
         self.market_collateral
-            .set(&market_id, &0u64, state)
+            .set(&market_id, &Amount::ZERO, state)
             .into_market_err()?;
 
         info!(

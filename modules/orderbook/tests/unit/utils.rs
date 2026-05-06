@@ -448,7 +448,7 @@ pub fn get_no_shares(runner: &TestRunner<RT, S>, user: &TestUser<S>, market_id: 
     })
 }
 
-pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u64 {
+pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u128 {
     runner.query_state(|state| {
         runner
             .runtime()
@@ -456,6 +456,7 @@ pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) ->
             .market_collateral
             .get(&market_id, state)
             .expect("failed to read market_collateral")
-            .unwrap_or(0)
+            .unwrap_or(Amount::ZERO)
+            .0
     })
 }
