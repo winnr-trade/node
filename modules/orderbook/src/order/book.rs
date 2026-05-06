@@ -592,12 +592,19 @@ impl<S: Spec> OrderbookModule<S> {
                 .into_orderbook_err()?;
         }
 
+        let timestamp = self
+            .chain_state
+            .get_time(state)
+            .into_orderbook_err()?
+            .as_millis() as u64;
+
         self.emit_event(
             state,
             Event::BookUpdated {
                 market_id,
                 best_bid: bid_levels.first().copied(),
                 best_ask: ask_levels.first().copied(),
+                timestamp,
             },
         );
 

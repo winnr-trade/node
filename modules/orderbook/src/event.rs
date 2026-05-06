@@ -73,6 +73,8 @@ pub enum Event {
         market_id: MarketId,
         best_bid: Option<Price>,
         best_ask: Option<Price>,
+        /// Block timestamp in milliseconds when the book state changed.
+        timestamp: u64,
     },
 }
 
