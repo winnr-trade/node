@@ -52,18 +52,6 @@ pub enum CallMessage<S: Spec> {
         amount: Size,
     },
 
-    /// Transfer YES/NO shares to another holder.
-    TransferShares {
-        /// Market to transfer shares in.
-        market_id: MarketId,
-        /// Recipient address.
-        to: S::Address,
-        /// YES shares to transfer.
-        yes_amount: Size,
-        /// NO shares to transfer.
-        no_amount: Size,
-    },
-
     /// Resolve a market with a final outcome.
     ResolveMarket {
         /// Market to resolve.

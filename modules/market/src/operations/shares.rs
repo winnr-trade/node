@@ -228,19 +228,6 @@ impl<S: Spec> MarketModule<S> {
         Ok(())
     }
 
-    /// Transfer shares from the tx sender to another holder.
-    pub(crate) fn transfer_shares(
-        &mut self,
-        market_id: MarketId,
-        to: S::Address,
-        yes_amount: Size,
-        no_amount: Size,
-        ctx: &Context<S>,
-        state: &mut impl TxState<S>,
-    ) -> Result<(), MarketError> {
-        self.transfer_shares_from(market_id, ctx.sender(), &to, yes_amount, no_amount, state)
-    }
-
     /// Get a market and verify it's active
     fn get_active_market(
         &self,
