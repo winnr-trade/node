@@ -3,7 +3,9 @@
 #  - "sqlite://demo_data/da.sqlite?mode=rwc"
 #  - "sqlite::memory:"
 #  - "postgresql://root:hunter2@aws.amazon.com/mock-da"
-connection_string = "sqlite://rollup-state/mock_da.sqlite?mode=rwc"
+#connection_string = "sqlite://rollup-state/mock_da.sqlite?mode=rwc"
+connection_string = "sqlite:///mnt/rollup-state/mock_da.sqlite?mode=rwc"
+
 # String representation of sequencer address.
 # For initial full node should match genesis of sequencer-registry.
 # It is going to be a DA address that blobs from this node will be associated.
@@ -15,7 +17,9 @@ block_time_ms = 6_000
 
 [storage]
 # The path to the rollup's data directory. Paths that do not begin with `/` are interpreted as relative paths.
-path = "./rollup-state/rollup-starter-data-mock"
+# path = "./rollup-state/rollup-starter-data-mock"
+path = "/mnt/rollup-state/rollup-starter-data-mock"
+
 user_commit_concurrency = 6
 kernel_commit_concurrency = 2
 # Disable pruning for now
