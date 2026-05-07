@@ -1,5 +1,5 @@
 import type { Signer } from "@sovereign-sdk/signers";
-import { rollup, userSigner } from "../config";
+import { rollup } from "../config";
 
 export const placeOrder = async (
   params: {
@@ -23,7 +23,7 @@ export const placeOrder = async (
         market_id: params.marketId,
         outcome: params.outcome,
         side: params.side,
-        price: params.price,
+        price: params.price * 100,
         quantity: params.quantity,
         order_type: params.orderType,
       },
