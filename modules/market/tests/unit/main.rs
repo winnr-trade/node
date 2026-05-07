@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use market::{CallMessage, MarketConfig, MarketGenesisConfig, MarketModule};
+use pyth::{GuardianSet, PythGenesisConfig, PythModule};
 use sov_bank::{Bank, CallMessage as BankCallMessage, TokenId};
 use sov_modules_api::{Amount, SafeString, SafeVec, Spec};
 use sov_test_utils::runtime::genesis::optimistic::HighLevelOptimisticGenesisConfig;
@@ -21,7 +22,8 @@ mod utils;
 
 generate_optimistic_runtime!(
     TestRuntime <=
-    market: MarketModule<S>
+    market: MarketModule<S>,
+    pyth: PythModule<S>
 );
 
 type S = TestSpec;
@@ -64,7 +66,19 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
         config: market_config,
     };
 
-    let genesis = GenesisConfig::from_minimal_config(genesis_config.into(), market_genesis_config);
+    let pyth_genesis_config = PythGenesisConfig {
+        admin: admin_addr,
+        guardian_set: GuardianSet {
+            keys: vec![],
+            expiry: 0,
+        },
+    };
+
+    let genesis = GenesisConfig::from_minimal_config(
+        genesis_config.into(),
+        market_genesis_config,
+        pyth_genesis_config,
+    );
     let mut runner =
         TestRunner::new_with_genesis(genesis.into_genesis_params(), TestRuntime::default());
 

@@ -2,7 +2,6 @@ import { getTokenId as _getTokenId } from "@sovereign-sdk/modules";
 import {
   bank,
   rollup,
-  userAddress,
   tokenDeployerAddress,
   tokenDeployerSigner,
   tokenMinterAddress,
@@ -55,7 +54,7 @@ export const createToken = async (params: {
         token_decimals: params.decimals,
         initial_balance: params.initialBalance,
         supply_cap: params.supplyCap,
-        mint_to_address: userAddress,
+        mint_to_address: tokenMinterAddress,
         admins: [tokenMinterAddress],
       },
     },

@@ -33,9 +33,13 @@ use shielded_pool::ShieldedPoolModule;
 pub use types::*;
 
 // Re-export shared types
-pub use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+pub use shared_types::{
+    MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size, TokenIdExt,
+};
 
+use agent_wallet::AgentWalletModule;
 use market::MarketModule;
+use sov_bank::Amount;
 use sov_modules_api::{
     Context, GenesisState, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap, StateValue,
     TxState,
@@ -66,7 +70,7 @@ pub struct OrderbookModule<S: Spec> {
 
     /// Locked collateral per user per market (for BUY orders)
     #[state]
-    pub locked_collateral: StateMap<UserMarketKey<S>, u64>,
+    pub locked_collateral: StateMap<UserMarketKey<S>, Amount>,
 
     /// Locked YES/NO shares per user per market (for SELL orders)
     #[state]
@@ -113,6 +117,10 @@ pub struct OrderbookModule<S: Spec> {
     /// Shielded pool module for stealth orders
     #[module]
     pub shielded_pool: ShieldedPoolModule<S>,
+
+    /// Agent Wallet module for resolving delegated trading principals.
+    #[module]
+    pub agent_wallet: AgentWalletModule<S>,
 }
 
 impl<S: Spec> Module for OrderbookModule<S> {

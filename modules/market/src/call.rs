@@ -2,7 +2,7 @@
 
 use crate::types::Resolver;
 use schemars::JsonSchema;
-use shared_types::{MarketId, Outcome};
+use shared_types::{MarketId, Outcome, Size};
 use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{SafeString, Spec};
@@ -14,8 +14,8 @@ use sov_modules_api::{SafeString, Spec};
 pub enum ResolutionData {
     /// Resolve by designated address: caller provides the outcome directly.
     Address { outcome: Outcome },
-    /// Resolve via Pyth oracle: caller provides the price update proof.
-    Pyth { price_update_data: Vec<u8> },
+    /// Resolve via Pyth oracle: caller provides the publish_time of a stored price update.
+    Pyth { publish_time: u64 },
 }
 
 /// Call messages for the prediction market module.
@@ -41,15 +41,15 @@ pub enum CallMessage<S: Spec> {
         /// Market to mint shares for.
         market_id: MarketId,
         /// Amount of collateral to deposit (mints equal YES and NO).
-        amount: u64,
+        amount: Size,
     },
 
-    /// Redeem pairs of YES and NO shares for collateral.
-    RedeemShares {
-        /// Market to redeem from.
+    /// Burn pairs of YES and NO shares for collateral.
+    BurnShares {
+        /// Market to burn from.
         market_id: MarketId,
-        /// Number of share pairs to redeem.
-        amount: u64,
+        /// Number of share pairs to burn.
+        amount: Size,
     },
 
     /// Resolve a market with a final outcome.
@@ -64,6 +64,12 @@ pub enum CallMessage<S: Spec> {
     ClaimWinnings {
         /// Market to claim from.
         market_id: MarketId,
+    },
+
+    /// Compact active-market index for the sender.
+    CompactUserActiveMarkets {
+        /// Maximum entries to scan in this call.
+        max_scan: u32,
     },
 
     /// Set supported collateral token (admin only).

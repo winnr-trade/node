@@ -101,6 +101,14 @@
   "shielded_pool": {
     "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"
   },
+  "pyth": {
+    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
+    "guardian_set": {
+      "keys": [],
+      "expiry": 0
+    }
+  },
+  "agent_wallet": {},
   "evm": {
     "accounts": [],
     "contract_creation_policy": "everyone",

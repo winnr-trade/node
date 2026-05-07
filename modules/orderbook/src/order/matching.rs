@@ -4,7 +4,8 @@ use crate::{
     SettlementKind,
 };
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, Price, Side, Size};
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{EventEmitter, Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -18,13 +19,22 @@ impl<S: Spec> OrderbookModule<S> {
         market_id: MarketId,
         side: Side,
         price: Price,
-        quantity: u64,
+        quantity: Size,
         taker: &S::Address,
+        order_type: OrderType,
+        collateral_token: &TokenId,
         state: &mut impl TxState<S>,
     ) -> Result<MatchResult, OrderbookError> {
         let opposite_side = side.opposite();
+
+        // Market orders match at any price; limit orders match up to their limit price
+        let limit_price = match order_type {
+            OrderType::Market => None,
+            _ => Some(price),
+        };
+
         let price_levels =
-            self.get_matchable_price_levels(market_id, opposite_side, price, side, state)?;
+            self.get_matchable_price_levels(market_id, opposite_side, limit_price, side, state)?;
 
         let config = self
             .config
@@ -33,11 +43,11 @@ impl<S: Spec> OrderbookModule<S> {
             .unwrap_or_default();
 
         let mut remaining = quantity;
-        let mut total_filled = 0u64;
+        let mut total_filled = Size::ZERO;
         let mut fills = Vec::new();
 
         for price_level in price_levels {
-            if remaining == 0 {
+            if remaining.is_zero() {
                 break;
             }
 
@@ -55,7 +65,7 @@ impl<S: Spec> OrderbookModule<S> {
                 .unwrap_or_default();
 
             for maker_order_id in order_ids {
-                if remaining == 0 {
+                if remaining.is_zero() {
                     break;
                 }
 
@@ -74,25 +84,25 @@ impl<S: Spec> OrderbookModule<S> {
 
                 let fill_qty = remaining.min(maker_order.remaining_quantity);
                 let fill_price = maker_order.canonical_price;
-                let notional = fill_price.cost(fill_qty);
+                let notional = fill_price.cost(fill_qty, collateral_token);
 
                 fills.push(Fill {
                     order_id: maker_order_id,
                     price: fill_price,
                     quantity: fill_qty,
-                    maker_fee: (notional * config.maker_fee_bps as u64) / 10000,
-                    taker_fee: (notional * config.taker_fee_bps as u64) / 10000,
+                    maker_fee: Amount((notional.0 * config.maker_fee_bps as u128) / 10000),
+                    taker_fee: Amount((notional.0 * config.taker_fee_bps as u128) / 10000),
                 });
 
-                remaining -= fill_qty;
-                total_filled += fill_qty;
+                remaining = remaining.saturating_sub(fill_qty);
+                total_filled = total_filled.saturating_add(fill_qty);
             }
         }
 
         Ok(MatchResult {
             fills,
-            total_filled,
-            remaining,
+            total_quantity_filled: total_filled,
+            remaining_quantity: remaining,
         })
     }
 
@@ -108,6 +118,12 @@ impl<S: Spec> OrderbookModule<S> {
         match_result: &MatchResult,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
+        let timestamp = self
+            .chain_state
+            .get_time(state)
+            .into_orderbook_err()?
+            .as_millis() as u64;
+
         for fill in &match_result.fills {
             let mut maker_order = self
                 .orders
@@ -144,7 +160,7 @@ impl<S: Spec> OrderbookModule<S> {
                 })?;
 
             // If maker order fully filled, remove from book and user orders.
-            if maker_order.remaining_quantity == 0 {
+            if maker_order.remaining_quantity.is_zero() {
                 maker_order.status = OrderStatus::Filled;
                 self.remove_order(&maker_order, state)?;
             }
@@ -164,6 +180,7 @@ impl<S: Spec> OrderbookModule<S> {
                     buyer: canonical_buyer.to_string(),
                     seller: canonical_seller.to_string(),
                     settlement_kind,
+                    timestamp,
                 },
             );
         }
@@ -178,11 +195,13 @@ impl<S: Spec> OrderbookModule<S> {
     /// Get matchable price levels on the opposite side.
     ///
     /// Returns levels in matching order (best price first).
+    /// If `limit_price` is None (market order), includes all levels.
+    /// If `limit_price` is Some, filters to levels within the limit.
     fn get_matchable_price_levels(
         &self,
         market_id: MarketId,
         book_side: Side,
-        limit_price: Price,
+        limit_price: Option<Price>,
         incoming_side: Side,
         state: &mut impl TxState<S>,
     ) -> Result<Vec<Price>, OrderbookError> {
@@ -196,10 +215,13 @@ impl<S: Spec> OrderbookModule<S> {
             .into_orderbook_err()?
             .unwrap_or_default();
 
-        levels.retain(|&p| match incoming_side {
-            Side::Bid => p <= limit_price,
-            Side::Ask => p >= limit_price,
-        });
+        // Filter by limit price only if specified (not a market order)
+        if let Some(limit_price) = limit_price {
+            levels.retain(|&p| match incoming_side {
+                Side::Bid => p <= limit_price,
+                Side::Ask => p >= limit_price,
+            });
+        }
 
         match book_side {
             Side::Ask => levels.sort(),

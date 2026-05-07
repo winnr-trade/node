@@ -1,7 +1,7 @@
 use crate::setup;
 use crate::utils;
 use orderbook::OrderbookError;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 
 #[test]
 fn test_post_only_posts_when_no_opposing_orders() {
@@ -22,7 +22,7 @@ fn test_post_only_posts_when_no_opposing_orders() {
     // Should rest on book since no asks exist
     let order = utils::get_order(&runner, OrderId(next_id));
     assert_eq!(order.status, OrderStatus::Open);
-    assert_eq!(order.remaining_quantity, 100);
+    assert_eq!(order.remaining_quantity, Size(100));
     assert_eq!(
         utils::get_best_bid(&runner, data.market_id),
         Some(Price(5000))
@@ -193,7 +193,7 @@ fn test_fok_fills_fully() {
     // Maker ask should be fully filled
     let ask_order = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask_order.status, OrderStatus::Filled);
-    assert_eq!(ask_order.remaining_quantity, 0);
+    assert_eq!(ask_order.remaining_quantity, Size(0));
 }
 
 #[test]
@@ -224,15 +224,15 @@ fn test_fok_rejected_when_insufficient_liquidity() {
         100,
         OrderType::FillOrKill,
         OrderbookError::FillOrKillNotFilled {
-            requested: 100,
-            available: 50,
+            requested: Size(100),
+            available: Size(50),
         },
     );
 
     // The maker ask should be unchanged (FOK is atomic)
     let ask_order = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask_order.status, OrderStatus::Open);
-    assert_eq!(ask_order.remaining_quantity, 50);
+    assert_eq!(ask_order.remaining_quantity, Size(50));
     assert_eq!(
         utils::get_best_ask(&runner, data.market_id),
         Some(Price(5000))
@@ -254,8 +254,8 @@ fn test_fok_rejected_when_no_liquidity() {
         100,
         OrderType::FillOrKill,
         OrderbookError::FillOrKillNotFilled {
-            requested: 100,
-            available: 0,
+            requested: Size(100),
+            available: Size(0),
         },
     );
 }

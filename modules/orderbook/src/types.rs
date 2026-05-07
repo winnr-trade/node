@@ -6,8 +6,12 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
-use sov_modules_api::Spec;
+use shared_types::{MarketId, OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
+use sov_bank::{Amount, TokenId};
+use sov_modules_api::{
+    macros::{serialize, UniversalWallet},
+    Spec,
+};
 
 // An order request from the user
 #[derive(
@@ -26,22 +30,14 @@ pub struct OrderRequest {
     pub outcome: OutcomeSide,
     pub side: Side,
     pub price: Price,
-    pub quantity: u64,
+    pub quantity: Size,
     pub order_type: OrderType,
 }
 
 /// An order in the canonical YES-space book.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
+#[serde(bound(serialize = "", deserialize = ""))]
 pub struct Order<S: Spec> {
     /// Unique order ID.
     pub id: OrderId,
@@ -56,9 +52,9 @@ pub struct Order<S: Spec> {
     /// Canonical price in YES-space basis points.
     pub canonical_price: Price,
     /// Original quantity.
-    pub original_quantity: u64,
+    pub original_quantity: Size,
     /// Remaining unfilled quantity.
-    pub remaining_quantity: u64,
+    pub remaining_quantity: Size,
     /// Order owner.
     pub owner: S::Address,
     /// Order type.
@@ -72,25 +68,26 @@ pub struct Order<S: Spec> {
 impl<S: Spec> Order<S> {
     /// Check if order is fully filled.
     pub fn is_filled(&self) -> bool {
-        self.remaining_quantity == 0
+        self.remaining_quantity.is_zero()
     }
 
     /// Get filled quantity.
-    pub fn filled_quantity(&self) -> u64 {
-        self.original_quantity - self.remaining_quantity
+    pub fn filled_quantity(&self) -> Size {
+        self.original_quantity
+            .saturating_sub(self.remaining_quantity)
     }
 
     /// Collateral locked for remaining unfilled quantity.
     ///
     /// Only meaningful for BUY orders (`side == Side::Bid`). For SELL orders,
     /// shares are reserved instead of collateral — use `remaining_quantity` directly.
-    pub fn locked_collateral(&self) -> u64 {
+    pub fn locked_collateral(&self, token: &TokenId) -> Amount {
         match self.canonical_side {
-            Side::Bid => self.canonical_price.cost(self.remaining_quantity),
+            Side::Bid => self.canonical_price.cost(self.remaining_quantity, token),
             Side::Ask => self
                 .canonical_price
                 .complement()
-                .cost(self.remaining_quantity),
+                .cost(self.remaining_quantity, token),
         }
     }
 }
@@ -103,11 +100,11 @@ pub struct Fill {
     /// Execution price.
     pub price: Price,
     /// Quantity filled.
-    pub quantity: u64,
-    /// Maker fee.
-    pub maker_fee: u64,
-    /// Taker fee.
-    pub taker_fee: u64,
+    pub quantity: Size,
+    /// Maker fee in collateral base units.
+    pub maker_fee: Amount,
+    /// Taker fee in collateral base units.
+    pub taker_fee: Amount,
 }
 
 /// Fee configuration.
@@ -129,7 +126,7 @@ pub struct FeeConfig {
     /// Taker fee in basis points (e.g., 30 = 0.3%).
     pub taker_fee_bps: u16,
     /// Minimum order size.
-    pub min_order_size: u64,
+    pub min_order_size: Size,
     /// Maximum open orders per user per market.
     pub max_orders_per_user: u32,
 }
@@ -140,9 +137,9 @@ pub struct MatchResult {
     /// Fills that occurred.
     pub fills: Vec<Fill>,
     /// Total quantity filled.
-    pub total_filled: u64,
+    pub total_quantity_filled: Size,
     /// Remaining unfilled quantity.
-    pub remaining: u64,
+    pub remaining_quantity: Size,
 }
 
 /// Locked share balances per user+market.
@@ -161,9 +158,9 @@ pub struct MatchResult {
 )]
 pub struct LockedShares {
     /// YES shares locked for resting SELL YES orders.
-    pub yes: u64,
+    pub yes: Size,
     /// NO shares locked for resting SELL NO orders.
-    pub no: u64,
+    pub no: Size,
 }
 
 /// How a fill is settled between counterparties.

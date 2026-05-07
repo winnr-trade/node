@@ -1,6 +1,6 @@
 use crate::setup;
 use crate::utils;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 
 #[test]
 fn test_bid_matches_ask_at_same_price() {
@@ -34,7 +34,7 @@ fn test_bid_matches_ask_at_same_price() {
     // Maker ask fully filled
     let ask = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask.status, OrderStatus::Filled);
-    assert_eq!(ask.remaining_quantity, 0);
+    assert_eq!(ask.remaining_quantity, Size(0));
 
     // Book should be empty
     assert!(utils::get_best_ask(&runner, data.market_id).is_none());
@@ -72,7 +72,7 @@ fn test_ask_matches_bid_at_same_price() {
 
     let bid = utils::get_order(&runner, OrderId(bid_id));
     assert_eq!(bid.status, OrderStatus::Filled);
-    assert_eq!(bid.remaining_quantity, 0);
+    assert_eq!(bid.remaining_quantity, Size(0));
 
     assert!(utils::get_best_bid(&runner, data.market_id).is_none());
     assert!(utils::get_best_ask(&runner, data.market_id).is_none());
@@ -111,8 +111,8 @@ fn test_partial_fill_resting_order() {
     // Maker orders stay Open even when partially filled (matching engine only sets
     // PartiallyFilled on taker orders that are posted to book after matching)
     assert_eq!(ask.status, OrderStatus::Open);
-    assert_eq!(ask.remaining_quantity, 120);
-    assert_eq!(ask.filled_quantity(), 80);
+    assert_eq!(ask.remaining_quantity, Size(120));
+    assert_eq!(ask.filled_quantity(), Size(80));
 
     // Ask still on book
     assert_eq!(
@@ -152,7 +152,7 @@ fn test_taker_partially_filled_posts_remainder() {
 
     let bid = utils::get_order(&runner, OrderId(bid_id));
     assert_eq!(bid.status, OrderStatus::PartiallyFilled);
-    assert_eq!(bid.remaining_quantity, 40);
+    assert_eq!(bid.remaining_quantity, Size(40));
 
     // Bid should be on book
     assert_eq!(
@@ -204,11 +204,11 @@ fn test_price_time_priority_same_price() {
 
     let ask1 = utils::get_order(&runner, OrderId(ask1_id));
     assert_eq!(ask1.status, OrderStatus::Filled);
-    assert_eq!(ask1.remaining_quantity, 0);
+    assert_eq!(ask1.remaining_quantity, Size(0));
 
     let ask2 = utils::get_order(&runner, OrderId(ask2_id));
     assert_eq!(ask2.status, OrderStatus::Open);
-    assert_eq!(ask2.remaining_quantity, 100);
+    assert_eq!(ask2.remaining_quantity, Size(100));
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn test_price_priority_better_price_fills_first() {
 
     let ask_expensive = utils::get_order(&runner, OrderId(ask_expensive_id));
     assert_eq!(ask_expensive.status, OrderStatus::Open);
-    assert_eq!(ask_expensive.remaining_quantity, 100);
+    assert_eq!(ask_expensive.remaining_quantity, Size(100));
 }
 
 #[test]
@@ -294,11 +294,11 @@ fn test_self_trade_prevention_skips_own_orders() {
     // Both orders should remain open (self-trade prevented)
     let ask = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask.status, OrderStatus::Open);
-    assert_eq!(ask.remaining_quantity, 100);
+    assert_eq!(ask.remaining_quantity, Size(100));
 
     let bid = utils::get_order(&runner, OrderId(bid_id));
     assert_eq!(bid.status, OrderStatus::Open);
-    assert_eq!(bid.remaining_quantity, 100);
+    assert_eq!(bid.remaining_quantity, Size(100));
 }
 
 #[test]
@@ -364,7 +364,7 @@ fn test_taker_sweeps_multiple_price_levels() {
 
     let ask3 = utils::get_order(&runner, OrderId(ask3_id));
     assert_eq!(ask3.status, OrderStatus::Open); // maker stays Open
-    assert_eq!(ask3.remaining_quantity, 30);
+    assert_eq!(ask3.remaining_quantity, Size(30));
 }
 
 #[test]
@@ -447,5 +447,5 @@ fn test_bid_matches_ask_at_lower_price_executes_at_maker_price() {
     // Ask should be filled — fill happened at 4000
     let ask = utils::get_order(&runner, OrderId(ask_id));
     assert_eq!(ask.status, OrderStatus::Filled);
-    assert_eq!(ask.remaining_quantity, 0);
+    assert_eq!(ask.remaining_quantity, Size(0));
 }

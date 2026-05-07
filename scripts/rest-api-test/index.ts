@@ -99,7 +99,7 @@ const main = async () => {
     await createMarket({
       question: m.question,
       collateralTokenId: tokenId,
-      resolutionTime: currentTime + 7 * 864_000, // 7 days from now
+      resolutionTime: currentTime + 7 * 24 * 60 * 60 * 1000, // 7 days from now
       resolver,
     });
   }

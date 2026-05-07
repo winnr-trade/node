@@ -3,7 +3,7 @@ use crate::utils::{
 };
 use crate::{setup, RT, S};
 use market::{CallMessage, MarketModule};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use sov_test_utils::{AsUser, TransactionTestCase};
 
 #[test]
@@ -12,14 +12,20 @@ fn test_redeem_shares_success() {
     let user = test_data.user;
     let collateral = test_data.collateral_token_id;
 
-    let (market_id, _) =
-        create_test_market(&mut runner, &user, &user, "Will it rain tomorrow?", collateral, 86_400_000);
+    let (market_id, _) = create_test_market(
+        &mut runner,
+        &user,
+        &user,
+        "Will it rain tomorrow?",
+        collateral,
+        86_400_000,
+    );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
-        amount: 50,
+        amount: Size(50),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -35,14 +41,13 @@ fn test_redeem_shares_success() {
 
     // Verify remaining position
     let position = get_position(&runner, market_id, &user).expect("position should exist");
-    assert_eq!(position.yes_shares, 50);
-    assert_eq!(position.no_shares, 50);
+    assert_eq!(position.yes_shares, Size(50));
+    assert_eq!(position.no_shares, Size(50));
 
     // Verify market totals reduced
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 50);
-    assert_eq!(market.total_no_shares, 50);
-    assert_eq!(get_market_collateral(&runner, market_id), 50);
+    assert_eq!(market.total_shares, Size(50));
+    assert_eq!(get_market_collateral(&runner, market_id), 50_000_000);
 }
 
 #[test]
@@ -51,14 +56,20 @@ fn test_redeem_all_shares() {
     let user = test_data.user;
     let collateral = test_data.collateral_token_id;
 
-    let (market_id, _) =
-        create_test_market(&mut runner, &user, &user, "Will it rain tomorrow?", collateral, 86_400_000);
+    let (market_id, _) = create_test_market(
+        &mut runner,
+        &user,
+        &user,
+        "Will it rain tomorrow?",
+        collateral,
+        86_400_000,
+    );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
-        amount: 100,
+        amount: Size(100),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -79,8 +90,7 @@ fn test_redeem_all_shares() {
     );
 
     let market = get_market(&runner, market_id);
-    assert_eq!(market.total_yes_shares, 0);
-    assert_eq!(market.total_no_shares, 0);
+    assert_eq!(market.total_shares, Size::ZERO);
     assert_eq!(get_market_collateral(&runner, market_id), 0);
 }
 
@@ -90,14 +100,20 @@ fn test_redeem_more_than_owned_fails() {
     let user = test_data.user;
     let collateral = test_data.collateral_token_id;
 
-    let (market_id, _) =
-        create_test_market(&mut runner, &user, &user, "Will it rain tomorrow?", collateral, 86_400_000);
+    let (market_id, _) = create_test_market(
+        &mut runner,
+        &user,
+        &user,
+        "Will it rain tomorrow?",
+        collateral,
+        86_400_000,
+    );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
-        amount: 200,
+        amount: Size(200),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -116,9 +132,9 @@ fn test_redeem_shares_nonexistent_market_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id: MarketId(999),
-        amount: 100,
+        amount: Size(100),
     };
 
     runner.execute_transaction(TransactionTestCase {
@@ -138,13 +154,19 @@ fn test_redeem_zero_amount_fails() {
     let user = test_data.user;
     let collateral = test_data.collateral_token_id;
 
-    let (market_id, _) =
-        create_test_market(&mut runner, &user, &user, "Will it rain tomorrow?", collateral, 86_400_000);
+    let (market_id, _) = create_test_market(
+        &mut runner,
+        &user,
+        &user,
+        "Will it rain tomorrow?",
+        collateral,
+        86_400_000,
+    );
     mint_shares(&mut runner, &user, market_id, 100);
 
-    let msg = CallMessage::RedeemShares {
+    let msg = CallMessage::BurnShares {
         market_id,
-        amount: 0,
+        amount: Size::ZERO,
     };
 
     runner.execute_transaction(TransactionTestCase {

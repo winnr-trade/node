@@ -1,8 +1,8 @@
 use crate::error::IntoOrderbookError;
 use crate::order::canonical::CanonicalOrder;
-use crate::{MarketSideKey, OrderRequest, OrderbookError, OrderbookModule};
+use crate::{OrderRequest, OrderbookError, OrderbookModule};
 use market::{MarketId, MarketStatus};
-use shared_types::{OrderId, OrderType, Price, Side};
+use shared_types::{OrderId, OrderType, Price, Side, Size};
 use sov_modules_api::{Spec, TxState};
 
 impl<S: Spec> OrderbookModule<S> {
@@ -27,7 +27,7 @@ impl<S: Spec> OrderbookModule<S> {
             });
         }
 
-        if *quantity == 0 {
+        if quantity.is_zero() {
             return Err(OrderbookError::ZeroQuantity);
         }
 
@@ -43,7 +43,6 @@ impl<S: Spec> OrderbookModule<S> {
                 minimum: config.min_order_size,
             });
         }
-
         // Verify market exists and is active
         let market = self
             .market
@@ -67,18 +66,20 @@ impl<S: Spec> OrderbookModule<S> {
     /// Determine whether remaining quantity should rest on the book after matching.
     pub(crate) fn should_post(
         order_type: &OrderType,
-        total_filled: u64,
-        remaining: u64,
-        quantity: u64,
+        total_filled: Size,
+        remaining: Size,
+        quantity: Size,
     ) -> Result<bool, OrderbookError> {
         match order_type {
             OrderType::Limit => Ok(true),
-            OrderType::PostOnly => Ok(total_filled == 0),
+            OrderType::PostOnly => Ok(total_filled.is_zero()),
             OrderType::ImmediateOrCancel | OrderType::Market => Ok(false),
-            OrderType::FillOrKill if remaining > 0 => Err(OrderbookError::FillOrKillNotFilled {
-                requested: quantity,
-                available: total_filled,
-            }),
+            OrderType::FillOrKill if !remaining.is_zero() => {
+                Err(OrderbookError::FillOrKillNotFilled {
+                    requested: quantity,
+                    available: total_filled,
+                })
+            }
             OrderType::FillOrKill => Ok(false),
         }
     }

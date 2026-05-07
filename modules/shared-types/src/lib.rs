@@ -3,11 +3,90 @@
 //! This crate contains common types used across multiple modules
 //! to avoid circular dependencies.
 
-use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use sov_modules_api::macros::UniversalWallet;
-use std::str::FromStr;
+use sov_bank::{Amount, TokenId};
+use sov_modules_api::macros::{serialize, UniversalWallet};
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
+
+// ============================================================================
+// SIZE
+// ============================================================================
+
+/// Number of outcome tokens (YES or NO shares) — the "quantity" of an order or fill.
+///
+/// Stored as `u64`. Separate from [`Amount`] (collateral in base units) to prevent
+/// mixing share counts with monetary values.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
+)]
+#[serialize(Borsh, Serde)]
+pub struct Size(pub u64);
+
+impl Size {
+    pub const ZERO: Size = Size(0);
+    pub const MAX: Size = Size(u64::MAX);
+
+    pub fn is_zero(self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn checked_add(self, rhs: Size) -> Option<Size> {
+        self.0.checked_add(rhs.0).map(Size)
+    }
+
+    pub fn checked_sub(self, rhs: Size) -> Option<Size> {
+        self.0.checked_sub(rhs.0).map(Size)
+    }
+
+    pub fn saturating_add(self, rhs: Size) -> Size {
+        Size(self.0.saturating_add(rhs.0))
+    }
+
+    pub fn saturating_sub(self, rhs: Size) -> Size {
+        Size(self.0.saturating_sub(rhs.0))
+    }
+
+    pub fn min(self, rhs: Size) -> Size {
+        Size(self.0.min(rhs.0))
+    }
+}
+
+impl From<u64> for Size {
+    fn from(v: u64) -> Self {
+        Size(v)
+    }
+}
+
+impl From<Size> for u64 {
+    fn from(s: Size) -> u64 {
+        s.0
+    }
+}
+
+impl Display for Size {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// ============================================================================
+// TOKEN EXTENSIONS
+// ============================================================================
+
+/// Extension trait to extract decimals from a TokenId hash.
+/// Decimals are stored at byte [31] of the 32-byte hash.
+pub trait TokenIdExt {
+    fn get_decimals(&self) -> u8;
+}
+
+impl TokenIdExt for TokenId {
+    fn get_decimals(&self) -> u8 {
+        self.as_ref()[31]
+    }
+}
 
 // ============================================================================
 // MARKET TYPES
@@ -15,25 +94,12 @@ use std::str::FromStr;
 
 /// Unique identifier for a prediction market.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct MarketId(pub u64);
 
-impl core::fmt::Display for MarketId {
+impl Display for MarketId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Market({})", self.0)
     }
@@ -55,19 +121,8 @@ impl FromStr for MarketId {
 }
 
 /// Possible outcomes for a binary prediction market.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum Outcome {
     /// The predicted event occurred.
@@ -79,20 +134,8 @@ pub enum Outcome {
 }
 
 /// Current status of a market.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum MarketStatus {
     /// Market is open for trading.
@@ -110,22 +153,9 @@ pub enum MarketStatus {
 
 /// Unique identifier for an order.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct OrderId(pub u64);
 
 impl core::fmt::Display for OrderId {
@@ -157,22 +187,9 @@ impl FromStr for OrderId {
 ///
 /// Valid trading range is 1-9999 (0.01% to 99.99%).
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, UniversalWallet,
 )]
+#[serialize(Borsh, Serde)]
 pub struct Price(pub u64);
 
 impl Price {
@@ -185,18 +202,28 @@ impl Price {
     /// Price basis (10000 = 100%).
     pub const BASIS: u64 = 10000;
 
-    /// Create a new price, returning None if out of valid range.
-    pub fn new(value: u64) -> Option<Self> {
-        if value >= Self::MIN.0 && value <= Self::MAX.0 {
-            Some(Price(value))
+    /// Create a new price, returning an error if out of valid range.
+    pub fn new(value: u64) -> Result<Self, anyhow::Error> {
+        if Self::is_valid_value(value) {
+            Ok(Price(value))
         } else {
-            None
+            Err(anyhow::anyhow!(
+                "Invalid price {}, expected {}..={}",
+                value,
+                Self::MIN.0,
+                Self::MAX.0
+            ))
         }
     }
 
-    /// Check if price is within tradeable range (1-9999).
+    /// Check if a raw price value is within tradeable range (1-9999).
     pub fn is_valid(&self) -> bool {
-        *self >= Self::MIN && *self <= Self::MAX
+        Self::is_valid_value(self.0)
+    }
+
+    /// Check if a raw price value is within tradeable range (1-9999).
+    pub fn is_valid_value(value: u64) -> bool {
+        value >= Self::MIN.0 && value <= Self::MAX.0
     }
 
     /// Get the complementary price.
@@ -205,24 +232,27 @@ impl Price {
         Price(Self::BASIS.saturating_sub(self.0))
     }
 
-    /// Calculate cost for a given quantity.
-    /// E.g., 100 shares at price 6500 (0.65) = 65 collateral units.
-    pub fn cost(&self, quantity: u64) -> u64 {
-        // Use u128 to avoid overflow
-        ((self.0 as u128 * quantity as u128) / Self::BASIS as u128) as u64
+    /// Calculate cost for a given quantity in collateral base units.
+    ///
+    /// E.g., 100 shares at price 6500 (0.65) with 6 decimals (USDC) = 65,000,000 base units.
+    /// Formula: (quantity * price_bps * 10^decimals) / BASIS
+    pub fn cost(&self, quantity: Size, token: &TokenId) -> Amount {
+        let scale = 10u128.pow(token.get_decimals() as u32);
+        Amount((self.0 as u128 * quantity.0 as u128 * scale) / Self::BASIS as u128)
     }
 
-    /// Calculate quantity affordable with given collateral.
-    pub fn quantity_for_collateral(&self, collateral: u64) -> u64 {
+    /// Calculate quantity affordable with given collateral in base units.
+    pub fn quantity_for_collateral(&self, collateral: Amount, token: &TokenId) -> Size {
         if self.0 == 0 {
-            return 0;
+            return Size::ZERO;
         }
-        ((collateral as u128 * Self::BASIS as u128) / self.0 as u128) as u64
+        let scale = 10u128.pow(token.get_decimals() as u32);
+        Size(((collateral.0 * Self::BASIS as u128) / (self.0 as u128 * scale)) as u64)
     }
 }
 
-impl core::fmt::Display for Price {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl Display for Price {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:.2}%", self.0 as f64 / 100.0)
     }
 }
@@ -232,25 +262,13 @@ impl FromStr for Price {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value = u64::from_str(s)?;
-        Ok(Price(value))
+        Self::new(value)
     }
 }
 
 /// Which outcome side an order is for.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OutcomeSide {
     No,
@@ -267,20 +285,8 @@ impl OutcomeSide {
 }
 
 /// Order direction (buy or sell).
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum Side {
     /// Buying shares (willing to pay up to limit price).
@@ -299,20 +305,8 @@ impl Side {
 }
 
 /// Order type determining execution behavior.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderType {
     /// Standard limit order - rests on book if not filled.
@@ -329,20 +323,8 @@ pub enum OrderType {
 }
 
 /// Order status.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    UniversalWallet,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema, UniversalWallet)]
+#[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
     /// Order is active on the book.
@@ -381,16 +363,19 @@ mod tests {
     #[test]
     fn test_price_cost() {
         let price = Price(6500); // 65%
+        let mut token_bytes = [0u8; 32];
+        token_bytes[31] = 6; // 6 decimals
+        let token = TokenId::from(token_bytes);
 
-        // 100 shares at 0.65 = 65 collateral
-        assert_eq!(price.cost(100), 65);
+        // 100 shares at 0.65 with 6 decimals = 65,000,000 base units
+        assert_eq!(price.cost(Size(100), &token), Amount(65_000_000));
 
-        // 1000 shares at 0.65 = 650 collateral
-        assert_eq!(price.cost(1000), 650);
+        // 1000 shares at 0.65 with 6 decimals = 650,000,000 base units
+        assert_eq!(price.cost(Size(1000), &token), Amount(650_000_000));
     }
 
     #[test]
-    fn test_price_validation() {
+    fn test_price_is_valid() {
         assert!(Price(1).is_valid());
         assert!(Price(5000).is_valid());
         assert!(Price(9999).is_valid());
@@ -398,6 +383,24 @@ mod tests {
         assert!(!Price(0).is_valid());
         assert!(!Price(10000).is_valid());
         assert!(!Price(10001).is_valid());
+    }
+
+    #[test]
+    fn test_price_is_valid_value() {
+        assert!(Price::is_valid_value(1));
+        assert!(Price::is_valid_value(5000));
+        assert!(Price::is_valid_value(9999));
+
+        assert!(!Price::is_valid_value(0));
+        assert!(!Price::is_valid_value(10000));
+        assert!(!Price::is_valid_value(10001));
+    }
+
+    #[test]
+    fn test_price_new_validation() {
+        assert_eq!(Price::new(1).unwrap(), Price(1));
+        assert!(Price::new(0).is_err());
+        assert!(Price::new(10000).is_err());
     }
 
     #[test]

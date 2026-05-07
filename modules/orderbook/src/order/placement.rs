@@ -2,10 +2,11 @@ use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
 use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookModule};
+use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side, Size};
 use shielded_pool::Proof;
-use sov_bank::TokenId;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
 use tracing::debug;
 
@@ -16,7 +17,11 @@ impl<S: Spec> OrderbookModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        self.place_order(order_request, ctx.sender(), state)
+        let owner = self
+            .agent_wallet
+            .resolve_principal_or_self(ctx.sender(), SCOPE_PLACE_ORDER, state)
+            .into_orderbook_err()?;
+        self.place_order(order_request, &owner, state)
     }
 
     pub(crate) fn place_order_stealth(
@@ -30,22 +35,7 @@ impl<S: Spec> OrderbookModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        // Withdraw from shielded pool to a stealth address
-        self.shielded_pool
-            .withdraw_to(
-                proof,
-                commitment,
-                nullifier,
-                token_id,
-                order_request.quantity,
-                stealth_address,
-                ctx,
-                state,
-            )
-            .ok()
-            .unwrap();
-
-        self.place_order(order_request, &*stealth_address, state)
+        unimplemented!("Stealth orders call not open yet");
     }
 
     /// Cancel an order.
@@ -55,7 +45,10 @@ impl<S: Spec> OrderbookModule<S> {
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        let sender = context.sender();
+        let sender = self
+            .agent_wallet
+            .resolve_principal_or_self(context.sender(), SCOPE_CANCEL_ORDER, state)
+            .into_orderbook_err()?;
 
         let mut order = self
             .orders
@@ -64,7 +57,7 @@ impl<S: Spec> OrderbookModule<S> {
             .ok_or(OrderbookError::OrderNotFound { order_id })?;
 
         // Verify ownership
-        if order.owner != *sender {
+        if order.owner != sender {
             return Err(OrderbookError::NotOrderOwner {
                 order_id,
                 owner: order.owner.to_string(),
@@ -89,16 +82,33 @@ impl<S: Spec> OrderbookModule<S> {
         match order.side {
             Side::Bid => {
                 // BUY order: unlock collateral
-                let locked = order.locked_collateral();
-                self.unlock_collateral(&order.owner, order.market_id, locked, state)?;
+                let market = self
+                    .market
+                    .markets
+                    .get(&order.market_id, state)
+                    .into_orderbook_err()?
+                    .ok_or(OrderbookError::MarketNotFound {
+                        market_id: order.market_id,
+                    })?;
+                let locked = order.locked_collateral(&market.collateral_token);
+                self.unlock_collateral_to(
+                    &order.owner,
+                    Some(&order.owner),
+                    order.market_id,
+                    locked,
+                    state,
+                )?;
             }
             Side::Ask => {
                 // SELL order: unreserve shares
-                self.unlock_shares(
+                self.unlock_shares_to(
                     &order.owner,
+                    None,
                     order.market_id,
                     order.outcome,
                     unfilled,
+                    Amount::ZERO,
+                    Amount::ZERO,
                     state,
                 )?;
             }
@@ -106,7 +116,7 @@ impl<S: Spec> OrderbookModule<S> {
 
         // Update order
         order.status = OrderStatus::Cancelled;
-        order.remaining_quantity = 0;
+        order.remaining_quantity = Size::ZERO;
         self.orders
             .set(&order_id, &order, state)
             .into_orderbook_err()?;
@@ -131,9 +141,14 @@ impl<S: Spec> OrderbookModule<S> {
         context: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
+        let owner = self
+            .agent_wallet
+            .resolve_principal_or_self(context.sender(), SCOPE_CANCEL_ALL_ORDERS, state)
+            .into_orderbook_err()?;
+
         let order_ids = self
             .user_orders
-            .get(context.sender(), state)
+            .get(&owner, state)
             .into_orderbook_err()?
             .unwrap_or_default();
 
@@ -167,6 +182,16 @@ impl<S: Spec> OrderbookModule<S> {
             order_type,
         } = order_request;
 
+        // Load market to get collateral decimals
+        let market = self
+            .market
+            .markets
+            .get(&market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound { market_id })?;
+
+        let collateral_token = market.collateral_token;
+
         // Normalize to canonical YES-space
         let canonical_order = CanonicalOrder::normalize(outcome, side, price);
 
@@ -194,13 +219,15 @@ impl<S: Spec> OrderbookModule<S> {
             canonical_order.price,
             quantity,
             sender,
+            order_type,
+            &collateral_token,
             state,
         )?;
 
         let should_post = Self::should_post(
             &order_type,
-            match_result.total_filled,
-            match_result.remaining,
+            match_result.total_quantity_filled,
+            match_result.remaining_quantity,
             quantity,
         )?;
 
@@ -211,12 +238,13 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY order: lock collateral at limit price
-                let required_collateral = canonical_order.required_collateral(quantity);
-                self.lock_collateral(sender, market_id, required_collateral, state)?;
+                let required_collateral =
+                    canonical_order.required_collateral(quantity, &collateral_token);
+                self.lock_collateral_from(sender, market_id, required_collateral, state)?;
             }
             Side::Ask => {
                 // SELL order: reserve shares of the outcome being sold
-                self.lock_shares(sender, market_id, outcome, quantity, state)?;
+                self.lock_shares_from(sender, market_id, outcome, quantity, state)?;
             }
         }
 
@@ -235,17 +263,18 @@ impl<S: Spec> OrderbookModule<S> {
         match side {
             Side::Bid => {
                 // BUY: refund price improvement collateral
-                let total_required_collateral = canonical_order.required_collateral(quantity);
-                let total_used_collateral: u64 = match_result
-                    .fills
-                    .iter()
-                    .map(|f| match canonical_order.side {
-                        Side::Bid => f.price.cost(f.quantity),
-                        Side::Ask => f.price.complement().cost(f.quantity),
-                    })
-                    .sum();
+                let total_required_collateral =
+                    canonical_order.required_collateral(quantity, &collateral_token);
+                let total_used_collateral =
+                    match_result.fills.iter().fold(Amount::ZERO, |acc, f| {
+                        let cost = match canonical_order.side {
+                            Side::Bid => f.price.cost(f.quantity, &collateral_token),
+                            Side::Ask => f.price.complement().cost(f.quantity, &collateral_token),
+                        };
+                        acc.saturating_add(cost)
+                    });
 
-                if should_post && match_result.remaining > 0 {
+                if should_post && !match_result.remaining_quantity.is_zero() {
                     self.post_order(
                         order_id,
                         &order_request,
@@ -258,32 +287,45 @@ impl<S: Spec> OrderbookModule<S> {
                     // Refund excess collateral (case when when better prices were matched) after partial fills
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
-                    let required_remaining_collateral =
-                        canonical_order.required_collateral(match_result.remaining);
+                    let required_remaining_collateral = canonical_order
+                        .required_collateral(match_result.remaining_quantity, &collateral_token);
 
                     if remaining_collateral > required_remaining_collateral {
-                        self.unlock_collateral(
+                        self.unlock_collateral_to(
                             sender,
+                            Some(sender),
                             market_id,
-                            remaining_collateral - required_remaining_collateral,
+                            remaining_collateral.saturating_sub(required_remaining_collateral),
                             state,
                         )?;
                     }
-                } else if match_result.total_filled > 0 {
+                } else if !match_result.total_quantity_filled.is_zero() {
                     // Fully filled or IOC/Market with partial fills
                     let remaining_collateral =
                         total_required_collateral.saturating_sub(total_used_collateral);
-                    if remaining_collateral > 0 {
-                        self.unlock_collateral(sender, market_id, remaining_collateral, state)?;
+                    if remaining_collateral > 0u128 {
+                        self.unlock_collateral_to(
+                            sender,
+                            Some(sender),
+                            market_id,
+                            remaining_collateral,
+                            state,
+                        )?;
                     }
-                } else if match_result.remaining > 0 {
+                } else if !match_result.remaining_quantity.is_zero() {
                     // Not posted (IOC/Market) with no fills
-                    self.unlock_collateral(sender, market_id, total_required_collateral, state)?;
+                    self.unlock_collateral_to(
+                        sender,
+                        Some(sender),
+                        market_id,
+                        total_required_collateral,
+                        state,
+                    )?;
                 }
             }
             Side::Ask => {
                 // SELL: unlock unfilled shares if not posting
-                if should_post && match_result.remaining > 0 {
+                if should_post && !match_result.remaining_quantity.is_zero() {
                     self.post_order(
                         order_id,
                         &order_request,
@@ -293,10 +335,19 @@ impl<S: Spec> OrderbookModule<S> {
                         state,
                     )?;
                     // Shares for remaining qty stay reserved (for the resting order)
-                } else if match_result.remaining > 0 {
+                } else if !match_result.remaining_quantity.is_zero() {
                     // IOC/Market/no fills: unlock unfilled shares
-                    let to_unreserve = match_result.remaining;
-                    self.unlock_shares(sender, market_id, outcome, to_unreserve, state)?;
+                    let to_unreserve = match_result.remaining_quantity;
+                    self.unlock_shares_to(
+                        sender,
+                        None,
+                        market_id,
+                        outcome,
+                        to_unreserve,
+                        Amount::ZERO,
+                        Amount::ZERO,
+                        state,
+                    )?;
                 }
             }
         }
@@ -318,20 +369,20 @@ impl<S: Spec> OrderbookModule<S> {
         );
 
         // Emit fill event if any
-        if match_result.total_filled > 0 {
+        if !match_result.total_quantity_filled.is_zero() {
             let avg_price = match_result
                 .fills
                 .iter()
-                .map(|f| f.price.0 * f.quantity)
+                .map(|f| f.price.0 * f.quantity.0)
                 .sum::<u64>()
-                / match_result.total_filled;
+                / match_result.total_quantity_filled.0;
 
             self.emit_event(
                 state,
                 Event::OrderFilled {
                     order_id,
-                    filled_quantity: match_result.total_filled,
-                    remaining_quantity: match_result.remaining,
+                    filled_quantity: match_result.total_quantity_filled,
+                    remaining_quantity: match_result.remaining_quantity,
                     average_price: avg_price,
                 },
             );
@@ -374,11 +425,11 @@ impl<S: Spec> OrderbookModule<S> {
             canonical_side: canonical.side,
             canonical_price: canonical.price,
             original_quantity: *quantity,
-            remaining_quantity: match_result.remaining,
+            remaining_quantity: match_result.remaining_quantity,
             owner: sender.clone(),
             order_type: *order_type,
             created_at,
-            status: if match_result.total_filled > 0 {
+            status: if !match_result.total_quantity_filled.is_zero() {
                 OrderStatus::PartiallyFilled
             } else {
                 OrderStatus::Open

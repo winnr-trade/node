@@ -1,6 +1,6 @@
 use market::{MarketConfig, MarketGenesisConfig, MarketModule};
 use orderbook::{FeeConfig, OrderbookGenesisConfig, OrderbookModule};
-use shared_types::MarketId;
+use shared_types::{MarketId, Size};
 use shielded_pool::{ShieldedPoolGenesisConfig, ShieldedPoolModule};
 use sov_bank::TokenId;
 use sov_modules_api::{Amount, Spec};
@@ -67,7 +67,7 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
         fee_config: FeeConfig {
             maker_fee_bps: 0,
             taker_fee_bps: 0,
-            min_order_size: 1,
+            min_order_size: Size(1),
             max_orders_per_user: 100,
         },
     };

@@ -1,6 +1,6 @@
 use crate::setup;
 use crate::utils;
-use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 
 #[test]
 fn test_place_limit_bid_order() {
@@ -27,8 +27,8 @@ fn test_place_limit_bid_order() {
     // YES Bid => canonical Bid @ same price
     assert_eq!(order.canonical_side, Side::Bid);
     assert_eq!(order.canonical_price, Price(5000));
-    assert_eq!(order.original_quantity, 100);
-    assert_eq!(order.remaining_quantity, 100);
+    assert_eq!(order.original_quantity, Size(100));
+    assert_eq!(order.remaining_quantity, Size(100));
     assert_eq!(order.owner, data.user1.address());
     assert_eq!(order.order_type, OrderType::Limit);
     assert_eq!(order.status, OrderStatus::Open);
@@ -57,8 +57,8 @@ fn test_place_limit_ask_order() {
     // BUY NO @ 6000 => canonical SELL YES @ (10000-6000) = canonical Ask @ 4000
     assert_eq!(order.canonical_side, Side::Ask);
     assert_eq!(order.canonical_price, Price(4000));
-    assert_eq!(order.original_quantity, 50);
-    assert_eq!(order.remaining_quantity, 50);
+    assert_eq!(order.original_quantity, Size(50));
+    assert_eq!(order.remaining_quantity, Size(50));
     assert_eq!(order.status, OrderStatus::Open);
 }
 

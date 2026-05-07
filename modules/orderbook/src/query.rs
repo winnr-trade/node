@@ -1,31 +1,55 @@
 use crate::{MarketSideKey, OrderbookModule, PriceLevelKey};
 use market::MarketId;
-use shared_types::{Price, Side};
-use sov_modules_api::prelude::axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
-    extract::Query,
-    response::{IntoResponse, Response},
-    routing::{any, get},
-    Json, Router,
-};
-use sov_modules_api::prelude::tokio::time::{sleep, Duration};
+use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
-use sov_modules_api::rest::utils::{errors, ApiResult, Path};
+use sov_modules_api::prelude::{
+    axum::{
+        extract::{
+            ws::{Message, WebSocket, WebSocketUpgrade},
+            Query,
+        },
+        response::IntoResponse,
+        routing::{any, get},
+        Json, Router,
+    },
+    UnwrapInfallible,
+};
+use sov_modules_api::rest::utils::{errors, ApiResult};
 use sov_modules_api::rest::{ApiState, HasCustomRestApi};
 use sov_modules_api::{ApiStateAccessor, Spec};
 use std::collections::HashMap;
 
-impl<S: Spec> OrderbookModule<S> {
-    async fn route_status() -> ApiResult<String> {
-        Ok(Json("OK".to_string()))
-    }
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+struct UserOrdersQueryParams<S: Spec> {
+    user_address: S::Address,
+    market_id: Option<MarketId>,
+}
 
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
+#[serde(bound(serialize = "", deserialize = ""))]
+struct UserOrdersResponse<S: Spec> {
+    id: OrderId,
+    market_id: MarketId,
+    outcome: OutcomeSide,
+    side: Side,
+    canonical_side: Side,
+    canonical_price: Price,
+    original_quantity: Size,
+    remaining_quantity: Size,
+    owner: S::Address,
+    order_type: OrderType,
+    created_at: u64,
+    status: OrderStatus,
+    market_question: String,
+}
+
+impl<S: Spec> OrderbookModule<S> {
     // WebSocket handler for canonical book data
     async fn route_ws(
+        Query(params): Query<HashMap<String, String>>,
         ws: WebSocketUpgrade,
         state: ApiState<S, Self>,
         acc: ApiStateAccessor<S>,
-        Query(params): Query<HashMap<String, String>>,
     ) -> impl IntoResponse {
         let market_id = params.get("market_id").and_then(|s| s.parse::<u64>().ok());
         ws.on_upgrade(move |socket| Self::handle_orderbook_socket(socket, state, acc, market_id))
@@ -76,18 +100,89 @@ impl<S: Spec> OrderbookModule<S> {
                     Side::Bid => state.bids.get(&level_key, acc),
                     Side::Ask => state.asks.get(&level_key, acc),
                 };
-                let mut qty = 0u64;
+                let mut qty = Size::ZERO;
                 if let Ok(Some(ids)) = order_ids {
                     for oid in ids {
                         if let Ok(Some(order)) = state.orders.get(&oid, acc) {
-                            qty += order.remaining_quantity;
+                            qty = qty.saturating_add(order.remaining_quantity);
                         }
                     }
                 }
-                levels.push([price.0, qty]);
+                levels.push([price.0, qty.0]);
             }
         }
         levels
+    }
+
+    async fn route_user_orders(
+        params: Query<UserOrdersQueryParams<S>>,
+        state: ApiState<S, Self>,
+        mut acc: ApiStateAccessor<S>,
+    ) -> ApiResult<Vec<UserOrdersResponse<S>>> {
+        let user_address = params.user_address;
+        let maybe_market_id = params.market_id;
+
+        let order_ids = state
+            .user_orders
+            .get(&user_address, &mut acc)
+            .unwrap_infallible()
+            .unwrap_or_default();
+
+        let mut orders = Vec::new();
+        let mut market_questions: HashMap<MarketId, String> = HashMap::new();
+
+        for oid in order_ids {
+            let order = state
+                .orders
+                .get(&oid, &mut acc)
+                .unwrap_infallible()
+                .ok_or_else(|| errors::not_found_404("Order", oid))?;
+
+            let include = match maybe_market_id {
+                Some(market_id) => order.market_id == market_id,
+                None => true,
+            };
+
+            if !include {
+                continue;
+            }
+
+            let market_question = if let Some(question) = market_questions.get(&order.market_id) {
+                question.clone()
+            } else {
+                let market = state
+                    .market
+                    .markets
+                    .get(&order.market_id, &mut acc)
+                    .unwrap_infallible()
+                    .ok_or_else(|| errors::not_found_404("Market", order.market_id))?;
+                let question = market.question.to_string();
+                market_questions.insert(order.market_id, question.clone());
+                question
+            };
+
+            orders.push(UserOrdersResponse {
+                id: order.id,
+                market_id: order.market_id,
+                market_question,
+                outcome: order.outcome,
+                side: order.side,
+                canonical_side: order.canonical_side,
+                canonical_price: order.canonical_price,
+                original_quantity: order.original_quantity,
+                remaining_quantity: order.remaining_quantity,
+                owner: order.owner,
+                order_type: order.order_type,
+                created_at: order.created_at,
+                status: order.status,
+            });
+        }
+
+        Ok(orders.into())
+    }
+
+    async fn route_status() -> ApiResult<String> {
+        Ok(Json("OK".to_string()))
     }
 }
 
@@ -98,6 +193,7 @@ impl<S: Spec> HasCustomRestApi for OrderbookModule<S> {
         Router::new()
             .route("/status", get(Self::route_status))
             .route("/ws", any(Self::route_ws))
+            .route("/user-orders", get(Self::route_user_orders))
             .with_state(state.with(self.clone()))
     }
 

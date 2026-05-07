@@ -3,8 +3,9 @@ use std::str::FromStr;
 use crate::{RT, S};
 use market::ResolutionData;
 use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
-use shared_types::{MarketId, Outcome};
-use sov_bank::TokenId;
+use shared_types::{MarketId, Outcome, Size};
+use sov_bank::utils::TokenHolder;
+use sov_bank::{Amount, TokenId};
 use sov_modules_api::da::Time;
 use sov_modules_api::SafeString;
 use sov_test_utils::runtime::TestRunner;
@@ -74,7 +75,10 @@ pub fn mint_shares(
     market_id: MarketId,
     amount: u64,
 ) {
-    let msg = CallMessage::MintShares { market_id, amount };
+    let msg = CallMessage::MintShares {
+        market_id,
+        amount: Size(amount),
+    };
 
     runner.execute_transaction(TransactionTestCase {
         input: user.create_plain_message::<RT, MarketModule<S>>(msg),
@@ -134,7 +138,7 @@ pub fn get_position(
     runner.query_state(|state| {
         let key = PositionKey {
             market_id,
-            address: user.address(),
+            owner: TokenHolder::User(user.address()),
         };
         runner
             .runtime()
@@ -146,7 +150,7 @@ pub fn get_position(
 }
 
 /// Query total collateral held for a market.
-pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u64 {
+pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) -> u128 {
     runner.query_state(|state| {
         runner
             .runtime()
@@ -154,7 +158,8 @@ pub fn get_market_collateral(runner: &TestRunner<RT, S>, market_id: MarketId) ->
             .market_collateral
             .get(&market_id, state)
             .expect("failed to read market_collateral state")
-            .unwrap_or(0)
+            .unwrap_or(Amount::ZERO)
+            .0
     })
 }
 

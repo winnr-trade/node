@@ -2,11 +2,11 @@
 //!
 //! All prices are in canonical YES-space.
 
+use crate::SettlementKind;
 use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::SettlementKind;
-use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side};
+use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
 
 /// Events emitted by the orderbook module.
 #[derive(
@@ -30,7 +30,7 @@ pub enum Event {
         side: Side,
         canonical_side: Side,
         canonical_price: Price,
-        quantity: u64,
+        quantity: Size,
         order_type: OrderType,
         owner: String,
     },
@@ -38,8 +38,8 @@ pub enum Event {
     /// Order was filled (partially or fully).
     OrderFilled {
         order_id: OrderId,
-        filled_quantity: u64,
-        remaining_quantity: u64,
+        filled_quantity: Size,
+        remaining_quantity: Size,
         average_price: u64,
     },
 
@@ -47,7 +47,7 @@ pub enum Event {
     OrderCancelled {
         order_id: OrderId,
         reason: CancelReason,
-        unfilled_quantity: u64,
+        unfilled_quantity: Size,
     },
 
     /// Trade executed between counterparties.
@@ -57,13 +57,15 @@ pub enum Event {
         taker_order_id: OrderId,
         /// Canonical YES-space execution price.
         price: Price,
-        quantity: u64,
+        quantity: Size,
         /// Canonical buyer (bid-side party).
         buyer: String,
         /// Canonical seller (ask-side party).
         seller: String,
         /// How this trade was settled.
         settlement_kind: SettlementKind,
+        /// Timestamp of trade execution
+        timestamp: u64,
     },
 
     /// Best bid/ask updated (canonical YES-space).
@@ -71,6 +73,8 @@ pub enum Event {
         market_id: MarketId,
         best_bid: Option<Price>,
         best_ask: Option<Price>,
+        /// Block timestamp in milliseconds when the book state changed.
+        timestamp: u64,
     },
 }
 

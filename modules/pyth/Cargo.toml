@@ -1,0 +1,52 @@
+[package]
+name = "pyth"
+description = "Pyth oracle module - store and verify Pyth price updates"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pythnet-sdk = "2.3.1"
+byteorder = "1.4.3"
+
+
+# Shared types
+shared-types = { workspace = true }
+
+# Sovereign SDK
+sov-modules-api = { workspace = true }
+sov-state = { workspace = true }
+sov-chain-state = { workspace = true }
+
+# Serialization
+borsh = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Crypto
+sha2 = { workspace = true }
+
+[dev-dependencies]
+hex = { version = "0.4.3", features = ["serde"] }
+sov-address = { workspace = true, features = ["evm"] }
+sov-test-utils = { workspace = true }
+strum = { workspace = true }
+
+[[test]]
+name = "unit"
+path = "tests/unit/main.rs"
+
+[features]
+default = ["native"]
+native = [
+    "sov-modules-api/native",
+    "sov-state/native",
+    "sov-chain-state/native",
+]

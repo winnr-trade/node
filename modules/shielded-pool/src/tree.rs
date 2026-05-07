@@ -25,7 +25,14 @@ pub struct IncrementalMerkleTree {
 
 impl IncrementalMerkleTree {
     pub fn new(depth: u8, zero_value: HexHash) -> Self {
-        let filled_subtrees = vec![zero_value; depth as usize];
+        let mut current_zero = HexHash::from(ZERO_LEAF);
+        let mut filled_subtrees = Vec::with_capacity(depth as usize);
+
+        for _ in 0..depth {
+            filled_subtrees.push(current_zero);
+            current_zero = Self::hash(current_zero, current_zero);
+        }
+
         let roots = vec![zero_value; 1 << depth];
         Self {
             depth,
@@ -45,7 +52,7 @@ impl IncrementalMerkleTree {
         for level in 0..self.depth {
             if index % 2 == 0 {
                 self.filled_subtrees[level as usize] = current_hash;
-                current_hash = Self::hash(current_hash, self.zero_value);
+                current_hash = Self::hash(current_hash, self.level_zero(level));
             } else {
                 current_hash = Self::hash(self.filled_subtrees[level as usize], current_hash);
             }
@@ -67,5 +74,13 @@ impl IncrementalMerkleTree {
     fn hash(a: HexHash, b: HexHash) -> HexHash {
         let x = poseidon_t3(&a.0, &b.0);
         HexHash::from(x)
+    }
+
+    fn level_zero(&self, level: u8) -> HexHash {
+        let mut zero = HexHash::from(ZERO_LEAF);
+        for _ in 0..level {
+            zero = Self::hash(zero, zero);
+        }
+        zero
     }
 }

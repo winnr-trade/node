@@ -9,6 +9,7 @@ edition.workspace = true
 shared-types = { workspace = true }
 market = { workspace = true }
 shielded-pool = { workspace = true }
+agent-wallet = { workspace = true }
 
 # Sovereign SDK
 sov-modules-api = { workspace = true }
@@ -43,4 +44,5 @@ native = [
     "sov-chain-state/native",
     "market/native",
     "shielded-pool/native",
+    "agent-wallet/native",
 ]

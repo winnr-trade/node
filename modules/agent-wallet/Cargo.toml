@@ -1,0 +1,40 @@
+[package]
+name = "agent-wallet"
+description = "Agent wallet delegation module - scoped trading permissions for delegated agent keys"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# Sovereign SDK
+sov-modules-api = { workspace = true }
+sov-state = { workspace = true }
+sov-chain-state = { workspace = true }
+
+# Serialization
+borsh = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+sov-address = { workspace = true, features = ["evm"] }
+sov-test-utils = { workspace = true }
+
+[[test]]
+name = "unit"
+path = "tests/unit/main.rs"
+
+[features]
+default = ["native"]
+native = [
+    "sov-modules-api/native",
+    "sov-state/native",
+    "sov-chain-state/native",
+]
