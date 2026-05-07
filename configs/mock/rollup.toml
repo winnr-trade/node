@@ -35,7 +35,8 @@ da_polling_interval_ms = 2_000
 [runner.http_config]
 bind_host = "0.0.0.0"
 bind_port = 12346
-public_address = "http://127.0.0.1:12346"
+#public_address = "http://127.0.0.1:12346"
+public_address = "http://178.156.201.105:12346"
 
 [monitoring]
 telegraf_address = "127.0.0.1:8094"
