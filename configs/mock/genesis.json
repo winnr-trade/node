@@ -108,23 +108,5 @@
       "expiry": 0
     }
   },
-  "agent_wallet": {},
-  "evm": {
-    "accounts": [],
-    "contract_creation_policy": "everyone",
-    "initial_base_fee": 10,
-    "genesis_timestamp": 0,
-    "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
-    "chain_spec": {
-      "limit_contract_code_size": 524288,
-      "coinbase": "11111111111111111111111111111111",
-      "block_gas_limit": 1000000000,
-      "tx_gas_limit": 1000000000,
-      "base_fee_params": {
-        "max_change_denominator": 8,
-        "elasticity_multiplier": 2
-      },
-      "hardforks": [[0, "CANCUN"]]
-    }
-  }
+  "agent_wallet": {}
 }

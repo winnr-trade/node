@@ -3,8 +3,7 @@
 #  - "sqlite://demo_data/da.sqlite?mode=rwc"
 #  - "sqlite::memory:"
 #  - "postgresql://root:hunter2@aws.amazon.com/mock-da"
-#connection_string = "sqlite://rollup-state/mock_da.sqlite?mode=rwc"
-connection_string = "sqlite:///mnt/rollup-state/mock_da.sqlite?mode=rwc"
+connection_string = "sqlite://rollup-state/mock_da.sqlite?mode=rwc"
 
 # String representation of sequencer address.
 # For initial full node should match genesis of sequencer-registry.
@@ -17,8 +16,7 @@ block_time_ms = 6_000
 
 [storage]
 # The path to the rollup's data directory. Paths that do not begin with `/` are interpreted as relative paths.
-# path = "./rollup-state/rollup-starter-data-mock"
-path = "/mnt/rollup-state/rollup-starter-data-mock"
+path = "./rollup-state/rollup-starter-data-mock"
 
 user_commit_concurrency = 6
 kernel_commit_concurrency = 2
@@ -39,8 +37,7 @@ da_polling_interval_ms = 2_000
 [runner.http_config]
 bind_host = "0.0.0.0"
 bind_port = 12346
-#public_address = "http://127.0.0.1:12346"
-public_address = "http://178.156.201.105:12346"
+public_address = "http://127.0.0.1:12346"
 
 [monitoring]
 telegraf_address = "127.0.0.1:8094"
@@ -63,12 +60,14 @@ aggregated_proof_block_jump = 1
 prover_address = "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"
 max_number_of_transitions_in_db = 100
 max_number_of_transitions_in_memory = 20
+max_number_of_aggregated_proofs_in_memory = 5
 
 
 [sequencer]
 # 7 MiB
 max_batch_size_bytes = 7340032
-max_concurrent_blobs = 128
+max_concurrent_batch_blobs = 128
+max_concurrent_proof_blobs = 1024
 max_allowed_node_distance_behind = 10
 # rollup_address = "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
 rollup_address = "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6"
