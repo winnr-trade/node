@@ -10,6 +10,16 @@ freeze = [1, 1]
 # We use the ID 4321 for demo purposes. Change this value before deploying!
 CHAIN_ID = 6669
 CHAIN_NAME = "TestChain"
+# Chain hash overrides by rollup block height range.
+# When the rollup schema changes (e.g., adding a new transaction type), the CHAIN_HASH changes.
+# To avoid rejecting previously signed transactions, define overrides for old chain hashes.
+# Format: [{ start_height = <height>, end_height = <height>, chain_hash = "0x...", grace_period = <blocks> }, ...]
+# Ranges are [start_height, end_height) - start is inclusive, end is exclusive.
+# Falls back to Runtime::CHAIN_HASH when no override applies.
+# The optional `grace_period` field (defaults to 0) specifies how many blocks after end_height
+# the old hash will still be accepted alongside the new hash, allowing for smooth transitions.
+# Example: CHAIN_HASH_OVERRIDES = [{ start_height = 0, end_height = 1000, chain_hash = "0xabc...32_bytes_hex", grace_period = 100 }]
+CHAIN_HASH_OVERRIDES = []
 
 # The namespace used by the rollup to store its data.
 # Using byte_string to convert to ASCII bytes
@@ -22,12 +32,17 @@ BATCH_NAMESPACE = { byte_string = "test_1xx-b" }
 # Should be 10 bytes long for Celestia
 PROOF_NAMESPACE = { byte_string = "test_1xx-p" }
 
+# The number of bytes a transaction can have.
+MAX_TX_SIZE = 1_048_576
+
 EVM_GAS_METERING_MODE = "Rollup"
 # We will keep only this many blocks in the EVM module.
 EVM_BLOCK_PRUNING_THRESHOLD = 1000000000
 # How many rollup blocks to wait before terminating setup mode. While setup mode is enabled,
 # the rollup does not charge gas. This is useful when initializing the rollup with a bridged gas token.
 SETUP_MODE_TERMINATION_HEIGHT = 0 # Disable setup mode entirely by default.
+# Before this rollup height, the timestamp oracle is not updated from sequencing metadata.
+ENABLE_TIMESTAMP_ORACLE_AT = 0
 # When using soft-confirmations, this parameter sets the maximum number of slots that a transaction can be deferred by the sequencer before
 # being force-executed by the rollup. Decreasing the number of slots means that "forced" transactions are processed
 # more quickly in the worst case, but increases the likelihood that some soft confirmations
@@ -103,6 +118,10 @@ DEFAULT_GAS_TO_CHARGE_PER_EVM_GAS = [1, 0]
 # After deployments are updated, it needs to be set to 0. (2026-01-17)
 EVM_MAX_FEE_CHECK_HEIGHT = 1_000_000_000
 
+# After this evm block height, RPC receipts derive effectiveGasPrice
+# from the actual fee charged by the Sovereign gas meter.
+EVM_RECEIPT_ACTUAL_FEE_HEIGHT = 1_000_000_000
+
 # Maximum amount of gas the sequencer can pay for the tx execution ---
 MAX_SEQUENCER_EXEC_GAS_PER_TX = [1_000_000_000, 1_000_000_000]
 
@@ -146,6 +165,8 @@ FIXED_GAS_TO_CHARGE_PER_PROOF = [100, 100]
 # --- Gas fee adjustment parameters: See https://eips.ethereum.org/EIPS/eip-1559 for a detailed description ---
 # The initial gas limit of the rollup.
 INITIAL_GAS_LIMIT = [10_000_000_000_000_000, 10_000_000_000_000_000]
+UPDATED_GAS_LIMIT = [10_000_000_000_000_000, 10_000_000_000_000_000]
+CHANGE_GAS_LIMIT_AFTER_HEIGHT = 9223372036854775807
 # The initial "base fee" that every transaction emits when executed.
 INITIAL_BASE_FEE_PER_GAS = [10, 10]
 # The maximum change denominator of the base fee.
@@ -156,6 +177,7 @@ ELASTICITY_MULTIPLIER = 2
 
 # --- Hyperlane constants ---
 HYPERLANE_BRIDGE_DOMAIN = 5555
+HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT = 0
 # --- End Hyperlane constants ---
 
 BANK_DISCRIMINANT = 0
@@ -185,6 +207,7 @@ AGENT_WALLET_MODULE_DISCRIMINANT = 22
 # Chain reserved addresses
 
 # Test modules
+TX_HOOKS_COUNT_DISCRIMINANT = 226
 SEQUENCING_DATA_TESTER_DISCRIMINANT = 229
 PINNED_CACHE_TESTER_DISCRIMINANT = 230
 STATE_CONSISTENCY_DISCRIMINANT = 231

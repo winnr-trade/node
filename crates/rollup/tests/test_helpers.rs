@@ -4,11 +4,9 @@ use std::num::{NonZero, NonZeroU64, NonZeroUsize};
 use std::path::Path;
 
 use rollup_starter::rollup::StarterRollup;
-use rollup_starter::zkvm::InnerZkvm;
-use sov_address::EthereumAddress;
 use sov_db::config::RollupDbConfig;
 use sov_mock_da::MockDaConfig;
-use sov_modules_api::Spec;
+use sov_modules_api::{Base58Address, Spec};
 use sov_modules_rollup_blueprint::FullNodeBlueprint;
 use sov_sequencer::preferred::PreferredSequencerConfig;
 use sov_sequencer::preferred::RecoveryStrategy;
@@ -17,19 +15,17 @@ use sov_sequencer::{SequencerConfig, SequencerKindConfig};
 use sov_stf_runner::processes::RollupProverConfig;
 use sov_stf_runner::{HttpServerConfig, MonitoringConfig, ProofManagerConfig};
 use sov_stf_runner::{RollupConfig, RunnerConfig};
-use std::str::FromStr;
 use tokio::sync::oneshot;
-
-const PROVER_ADDRESS: &str = "0x4fD62a0D0c35e1Fdcd97231A4586E65e7Eb454a5";
 
 pub async fn start_rollup(
     rest_reporting_channel: oneshot::Sender<SocketAddr>,
     genesis_input: std::path::PathBuf,
-    rollup_prover_config: Option<RollupProverConfig<InnerZkvm>>,
+    rollup_prover_config: RollupProverConfig,
     da_config: MockDaConfig,
 ) {
     let temp_dir = tempfile::tempdir().unwrap();
     let temp_path = temp_dir.path();
+    let prover_address = Base58Address::from([42u8; 32]);
 
     let rollup_config = RollupConfig {
         storage: RollupDbConfig::default_in_path(temp_path.to_path_buf()),
@@ -43,18 +39,20 @@ pub async fn start_rollup(
         da: da_config,
         proof_manager: ProofManagerConfig {
             aggregated_proof_block_jump: NonZeroUsize::new(1).unwrap(),
-            prover_address: EthereumAddress::from_str(PROVER_ADDRESS)
-                .expect("Prover address is not valid"),
+            prover_address,
             max_number_of_transitions_in_db: NonZeroU64::new(100).unwrap(),
             max_number_of_transitions_in_memory: NonZeroU64::new(20).unwrap(),
+            eager_proof_submission: true,
+            prover_thread_count_override: None,
+            max_number_of_aggregated_proofs_in_memory: NonZeroUsize::new(5).unwrap(),
         },
         sequencer: SequencerConfig {
             max_allowed_node_distance_behind: 10,
             max_batch_size_bytes: 1048576,
-            max_concurrent_blobs: 16,
+            max_concurrent_batch_blobs: 16,
+            max_concurrent_proof_blobs: 1024,
             automatic_batch_production: true,
-            rollup_address: EthereumAddress::from_str(PROVER_ADDRESS)
-                .expect("Sequencer address is not valid"),
+            rollup_address: prover_address,
             admin_addresses: vec![],
             dropped_tx_ttl_secs: 0,
             blob_processing_timeout_secs: 60,
@@ -84,6 +82,7 @@ pub async fn start_rollup(
             None,
             None,
             None,
+            false,
         )
         .await
         .unwrap();

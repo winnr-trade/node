@@ -70,11 +70,11 @@ impl<S: Spec> OrderbookModule<S> {
                 "yes_bids": bids,
                 "yes_asks": asks
             });
-            let msg = Message::Text(snapshot.to_string());
+            let msg = Message::Text(snapshot.to_string().into());
             let _ = socket.send(msg).await;
         } else {
             let err = serde_json::json!({"error": "Missing or invalid market_id"});
-            let _ = socket.send(Message::Text(err.to_string())).await;
+            let _ = socket.send(Message::Text(err.to_string().into())).await;
         }
     }
 

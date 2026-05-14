@@ -66,6 +66,7 @@ sov-revenue-share = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git
 sov-risc0-adapter = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-sp1-adapter = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-rollup-interface = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
+sov-rollup-full-node-interface = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-sequencer = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-sequencer-registry = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-soak-testing-lib = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
@@ -82,6 +83,7 @@ sov-soak-testing = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git"
 sov-eip712-auth = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-rest-utils = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
 sov-proxy-utils = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a" }
+sov-metrics = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev = "f6cd64749edc56428fbeb7f22702458b0afb698a", features = ["native"] }
 stf-starter = { path = "./crates/stf", default-features = false }
 stf-starter-declaration = { path = "./crates/stf/stf-declaration", default-features = false }
 node-discovery = { path = "./crates/utils/node-discovery", default-features = false }
@@ -89,7 +91,7 @@ value-setter = { path = "./examples/value-setter" }
 strum = { version = "0.26.3", features = ["derive"] }
 
 alloy-consensus = { version = "1.0.37", default-features = false }
-axum = { version = "0.7.9", default-features = false }
+axum = { version = "0.8.8", default-features = false }
 serde = { version = "1.0.192", features = ["derive", "rc"] }
 serde_json = { version = "1.0" }
 

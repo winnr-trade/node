@@ -80,6 +80,7 @@ where
             &serde_json::from_str(__generated::SCHEMA_JSON)
                 .expect("Failed to deserialize schema json"),
             Self::CHAIN_HASH.into(),
+            api_state.checkpoint_receiver(),
         )
         .expect("Failed to initialize StandardSchemaEndpoint");
         let axum_router = axum_router.merge(schema_endpoint.axum_router());
@@ -135,18 +136,6 @@ where
     }
 
     #[cfg(feature = "native")]
-    fn maybe_set_oracle_timestamp(
-        &self,
-        millis_since_epoch: i64,
-    ) -> Option<<Self as sov_modules_api::DispatchCall>::Decodable> {
-        Some(Self::Decodable::ChainState(
-            sov_chain_state::CallMessage::SetOracleTime {
-                milliseconds_since_epoch: millis_since_epoch,
-            },
-        ))
-    }
-
-    #[cfg(feature = "native")]
     fn populate_pinned_cache(storage: &S::Storage) -> Option<sov_state::pinned_cache::PinnedCache> {
         let buckets_and_limits =
             sov_evm::Evm::<S>::default().get_pinned_cache_buckets_and_limits()?;
@@ -159,17 +148,5 @@ where
             }
         }
         Some(pinned_cache)
-    }
-
-    #[cfg(feature = "native")]
-    fn resolve_address<ST: sov_modules_api::StateReader<sov_modules_api::User>>(
-        &self,
-        default_address: &S::Address,
-        credential_id: &sov_modules_api::CredentialId,
-        state: &mut ST,
-    ) -> Result<S::Address, ST::Error> {
-        self.0
-            .accounts
-            .resolve_sender_address_read_only(default_address, credential_id, state)
     }
 }
