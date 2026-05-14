@@ -43,7 +43,7 @@ impl<S: Spec> HasCustomRestApi for PythModule<S> {
     fn custom_rest_api(&self, state: ApiState<Self::Spec>) -> Router<()> {
         Router::new()
             .route("/status", get(Self::route_status))
-            .route("/price/:feed_id/:timestamp", get(Self::route_price_at))
+            .route("/price/{feed_id}/{timestamp}", get(Self::route_price_at))
             .with_state(state.with(self.clone()))
     }
 

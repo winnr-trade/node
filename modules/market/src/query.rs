@@ -173,7 +173,7 @@ impl<S: Spec> HasCustomRestApi for MarketModule<S> {
         axum::Router::new()
             .route("/list", get(Self::route_market_list))
             .route("/positions", get(Self::route_active_positions))
-            .route("/:marketId", get(Self::route_market))
+            .route("/{marketId}", get(Self::route_market))
             .route("/shares", get(Self::route_shares))
             .route("/status", get(Self::route_status))
             .with_state(state.with(self.clone()))
