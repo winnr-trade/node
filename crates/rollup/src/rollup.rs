@@ -2,20 +2,14 @@
 //! StarterRollup provides a minimal self-contained rollup implementation
 
 use async_trait::async_trait;
-use axum::extract::{ConnectInfo, State};
-use axum::response::IntoResponse;
-use axum::routing::post;
-use axum::Json;
 // use sov_address::{EthereumAddress, EvmCryptoSpec, FromVmAddress, MultiAddress};
 use sov_db::ledger_db::LedgerDb;
 use sov_db::storage_manager::NomtStorageManager;
 // use sov_eip712_auth::Eip712AuthenticatorTrait;
 use sov_hyperlane_integration::HyperlaneAddress;
-use sov_mock_zkvm::{MockCodeCommitment, MockZkvmCryptoSpec};
+use sov_mock_zkvm::MockZkvmCryptoSpec;
 // use sov_modules_api::capabilities::TransactionAuthenticator;
 use sov_modules_api::configurable_spec::ConfigurableSpec;
-use sov_modules_api::rest::StateUpdateReceiver;
-use sov_modules_api::ZkVerifier;
 use sov_modules_api::{Base58Address, Spec};
 use sov_modules_rollup_blueprint::pluggable_traits::PluggableSpec;
 use sov_modules_rollup_blueprint::proof_sender::SovApiProofSender;
@@ -27,21 +21,22 @@ use sov_modules_rollup_blueprint::{FullNodeBlueprint, RollupBlueprint, Sequencer
 // use sov_sequencer::rest_api::{AcceptTx, TxInfoWithConfirmation};
 // use std::net::SocketAddr;
 
+use sov_rollup_full_node_interface::StateUpdateReceiver;
+use sov_rollup_interface::common::SlotNumber;
 use sov_rollup_interface::execution_mode::Native;
 use sov_rollup_interface::node::SyncStatus;
-use sov_rollup_interface::zk::aggregated_proof::CodeCommitment;
 use sov_sequencer::{ProofBlobSender, Sequencer};
 use sov_state::nomt::prover_storage::NomtProverStorage;
 use sov_state::DefaultStorageSpec;
 use sov_state::Storage;
-use sov_stf_runner::processes::{ParallelProverService, ProverService, RollupProverConfig};
+use sov_stf_runner::processes::{ParallelProverService, RollupProverConfig};
 use sov_stf_runner::RollupConfig;
 use std::sync::Arc;
 use stf_starter::Runtime;
 use tokio::sync::watch;
 
 use crate::da::{new_da_service, new_verifier, DaService, DaSpec};
-use crate::zkvm::{create_inner_vm_from_config, get_outer_vm, Hasher, InnerZkvm, OuterZkvm};
+use crate::zkvm::{create_inner_vm, get_outer_vm, Hasher, InnerZkvm, OuterZkvm};
 
 type NativeStorage = NomtProverStorage<
     DefaultStorageSpec<Hasher>,
@@ -104,12 +99,6 @@ impl FullNodeBlueprint<Native> for StarterRollup<Native> {
 
     type ProofSender = SovApiProofSender<Self::Spec>;
 
-    fn create_outer_code_commitment(
-        &self,
-    ) -> <<Self::ProverService as ProverService>::Verifier as ZkVerifier>::CodeCommitment {
-        MockCodeCommitment::default()
-    }
-
     async fn create_endpoints(
         &self,
         state_update_receiver: StateUpdateReceiver<<Self::Spec as Spec>::Storage>,
@@ -141,30 +130,34 @@ impl FullNodeBlueprint<Native> for StarterRollup<Native> {
 
     async fn create_prover_service(
         &self,
-        prover_config: RollupProverConfig<<Self::Spec as Spec>::InnerZkvm>,
+        _prover_config: RollupProverConfig,
         rollup_config: &RollupConfig<<Self::Spec as Spec>::Address, Self::DaService>,
         _da_service: &Self::DaService,
-    ) -> Self::ProverService {
-        let inner_vm = create_inner_vm_from_config(prover_config.clone());
-        let (_, prover_config_disc) = prover_config.split();
-        let outer_vm = get_outer_vm();
+        _ledger_db: &LedgerDb,
+        _start_fresh_outer_proof_on_resync: bool,
+    ) -> (Self::ProverService, Option<SlotNumber>) {
+        let inner_vm = create_inner_vm().await;
+        let outer_vm = get_outer_vm::<<Self::Spec as Spec>::Address, DaSpec, <<Self::Spec as Spec>::Storage as Storage>::Root>(None);
         let da_verifier = new_verifier();
+        let num_threads = rollup_config.proof_manager.prover_thread_count();
 
-        ParallelProverService::new_with_default_workers(
+        let prover = ParallelProverService::new_with_default_workers(
             inner_vm,
             outer_vm,
             da_verifier,
-            prover_config_disc,
-            CodeCommitment::default(),
             rollup_config.proof_manager.prover_address,
-        )
+            num_threads,
+        );
+
+        (prover, None)
     }
 
     fn create_storage_manager(
         &self,
         rollup_config: &RollupConfig<<Self::Spec as Spec>::Address, Self::DaService>,
+        witness_generation: bool,
     ) -> anyhow::Result<Self::StorageManager> {
-        NomtStorageManager::new(rollup_config.storage.clone())
+        NomtStorageManager::new(rollup_config.storage.clone(), witness_generation)
     }
 
     fn create_proof_sender(
@@ -180,6 +173,7 @@ impl FullNodeBlueprint<Native> for StarterRollup<Native> {
         sequencer: Seq,
         rollup_config: &RollupConfig<<Self::Spec as Spec>::Address, Self::DaService>,
         shutdown_receiver: tokio::sync::watch::Receiver<()>,
+        sequencer_da_address: <<Self::Spec as Spec>::Da as sov_rollup_interface::da::DaSpec>::Address,
     ) -> anyhow::Result<sov_modules_api::NodeEndpoints>
     where
         Seq: Sequencer<Spec = Self::Spec, Rt = Self::Runtime, Da = Self::DaService>,
@@ -193,7 +187,7 @@ impl FullNodeBlueprint<Native> for StarterRollup<Native> {
         //     shutdown_receiver,
         // };
 
-        let _ = (rollup_config, shutdown_receiver, sequencer);
+        let _ = (rollup_config, shutdown_receiver, sequencer, sequencer_da_address);
         let axum_router = axum::Router::new();
         // let axum_router = axum::Router::new()
         //     .route("/sequencer/eip712_tx", post(accept_eip712_tx::<Seq>))

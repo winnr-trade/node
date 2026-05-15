@@ -35,6 +35,7 @@ This tutorial will guide you through running the rollup starter on Celestia, fro
 ## Prerequisites
 
 Before starting this tutorial, ensure that:
+
 - You have Rust and Cargo installed
 - You have Docker installed (for local devnet)
 - Your rollup is working with MockDa
@@ -91,7 +92,7 @@ $ cargo run --no-default-features --features=celestia_da,mock_zkvm -- --rollup-c
 The log output should indicate a healthy running rollup. Verify that the REST API is responding:
 
 ```bash,test-ci,bashtestmd:compare-output
-$ curl -s http://127.0.0.1:12346/modules/value-setter/state/value
+$ curl -s http://127.0.0.1:12346/health
 {"value":null}
 ```
 
@@ -124,6 +125,7 @@ For this tutorial, we'll use the [Mocha testnet](https://docs.celestia.org/how-t
    - **API token**: The alphanumeric string in your endpoint URL
 
 Your configuration will look like:
+
 ```toml
 [da]
 rpc_url = "wss://your-endpoint.celestia-mocha.quiknode.pro/your-api-token/"
@@ -134,6 +136,7 @@ grpc_auth_token = "your-api-token"
 #### Option B: Other RPC Providers
 
 You can use any Celestia RPC provider that exposes:
+
 - **Celestia RPC endpoint** (port 26658 by default) — supports both HTTP and WebSocket
 - **gRPC endpoint** (port 9090 by default)
 
@@ -144,6 +147,7 @@ Configure the endpoints in your `rollup.toml` accordingly.
 Your rollup needs a Celestia wallet to sign and submit blobs. The private key must be in unarmored hexadecimal format (64 characters).
 
 **Option A: Using cel-key** (if you have [celestia-node](https://docs.celestia.org/operate/keys-wallets/celestia-node-key) installed):
+
 ```bash
 # Create a new key
 $ cel-key add my-rollup-key --keyring-backend test --node.type light --p2p.network mocha
@@ -153,12 +157,14 @@ $ cel-key export my-rollup-key --unarmored-hex --unsafe --keyring-backend test -
 ```
 
 **Option B: Using openssl**:
+
 ```bash
 # Generate a random 32-byte hex key
 $ openssl rand -hex 32
 ```
 
 **Option C: Using cast** (from [Foundry](https://book.getfoundry.sh/)):
+
 ```bash
 $ cast wallet new | grep "Private key" | awk '{print $3}'
 ```
@@ -166,6 +172,7 @@ $ cast wallet new | grep "Private key" | awk '{print $3}'
 To derive the Celestia address from a private key, use [cel-key](https://docs.celestia.org/operate/keys-wallets/celestia-node-key) or any Cosmos SDK compatible wallet, for example Keplr.
 
 Note down:
+
 - **Private key** (hex format, 64 characters) — for `signer_private_key` in config
 - **Celestia address** — for genesis configuration (e.g., `celestia1abc...`)
 
@@ -229,9 +236,7 @@ Update your Celestia address in [`configs/celestia/genesis.json`](configs/celest
   "paymaster": {
     "payers": [
       {
-        "sequencers_to_register": [
-          "celestia1your-address-here"
-        ]
+        "sequencers_to_register": ["celestia1your-address-here"]
       }
     ]
   }
@@ -240,7 +245,7 @@ Update your Celestia address in [`configs/celestia/genesis.json`](configs/celest
 
 Both values must be set to your Celestia address (the one corresponding to your `signer_private_key`).
 
-Also make sure that recent address is set `chain_state` section. 
+Also make sure that recent address is set `chain_state` section.
 For the new setup it should be pretty close to the latest head to avoid unnecessary processing of older blocks.
 
 ```json
@@ -319,6 +324,7 @@ You can track the `tx_hash` in your rollup logs. Once posted to the DA layer, ch
 ## Success!
 
 Congratulations! Your rollup is now running on Celestia testnet. You can monitor your rollup's activity through:
+
 - Rollup logs
 - Celestia block explorer
 - Your rollup's REST API
@@ -349,6 +355,7 @@ The mainnet deployment process involves:
 ### RPC Provider Setup
 
 For mainnet, use a reliable RPC provider with:
+
 - High availability and redundancy
 - Low latency connections
 - Appropriate rate limits for your transaction volume
@@ -368,6 +375,7 @@ signer_private_key = "${CELESTIA_SIGNER_KEY}"  # Use environment variable
 For mainnet, never store private keys in configuration files:
 
 1. **Use environment variables**:
+
    ```bash
    export CELESTIA_SIGNER_KEY="your-private-key-hex"
    ```
@@ -380,6 +388,7 @@ For mainnet, never store private keys in configuration files:
    - Consider using HSM for high-security deployments
 
 Fund your Celestia address with sufficient TIA tokens:
+
 - Estimate based on expected transaction volume
 - Add buffer for fee spikes during network congestion
 - Set up monitoring alerts for low balance
@@ -389,11 +398,13 @@ Fund your Celestia address with sufficient TIA tokens:
 Carefully audit all configuration files:
 
 #### 1. Chain Constants (`constants.toml`)
+
 - Set production `CHAIN_ID` and `CHAIN_NAME`
 - Configure unique namespaces for mainnet
 - Ensure values cannot be confused with testnet
 
 #### 2. Genesis Configuration (`configs/genesis.json`)
+
 - Replace all testnet addresses with production addresses
 - **Update Celestia address** to match your mainnet signing key:
   - `sequencer_registry.sequencer_config.seq_da_address`
@@ -402,6 +413,7 @@ Carefully audit all configuration files:
 - Set appropriate `genesis_da_height`
 
 #### 3. Rollup Configuration (`configs/rollup.toml`)
+
 - Configure mainnet RPC endpoints
 - Set production `bind_host` and `bind_port`
 - Tune `max_batch_size_bytes` and other performance parameters
@@ -446,20 +458,24 @@ Before mainnet launch:
 ## Troubleshooting
 
 **Connection errors to RPC provider**:
+
 - Verify endpoint URLs are correct (use `ws://`/`wss://` or `http://`/`https://` for RPC, `http://`/`https://` for gRPC)
 - Check authentication token is valid
 - Ensure your IP is allowlisted if the provider requires it
 
 **Blob submission failures**:
+
 - Verify your wallet has sufficient TIA tokens
 - Check that the private key format is correct (64-character hex)
 - Ensure the Celestia address in genesis matches the signing key
 
 **Namespace issues**:
+
 - Namespaces must be exactly 10 bytes for Celestia
 - Rebuild the binary if you change namespace values in `constants.toml`
 
 **General debugging**:
+
 - Check rollup logs for specific error messages
 - Verify all configuration files have been updated correctly
 - Consult the [Sovereign SDK GitHub repository](https://github.com/Sovereign-Labs/sovereign-sdk) for known issues

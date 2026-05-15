@@ -1,6 +1,6 @@
 # Overview
 
-This repository provides a starting point for building rollups with the Sovereign SDK. 
+This repository provides a starting point for building rollups with the Sovereign SDK.
 
 It includes everything you need to create a rollup with customizable modules, REST API for state queries, TypeScript SDK for submitting transactions, WebSocket endpoints to subscribe to transactions and events, built-in token management, and much more.
 
@@ -11,7 +11,6 @@ It includes everything you need to create a rollup with customizable modules, RE
 - `crates/stf`: Contains the State Transition Function (STF) derived from the Runtime, used by both the rollup and prover crates
 - `crates/provers`: Generates proofs for the STF
 - `crates/rollup`: Runs the main rollup binary. This includes both the full-node and the soft-confirming sequencer (as well as replica + fail-over logic.)
-- `examples/value-setter`: Example module.
 
 ## Prerequisites
 
@@ -65,16 +64,15 @@ $ sleep 12
 The rollup includes several built-in modules: Bank (for token management), Paymaster, Hyperlane, and more. You can query any state item in these modules:
 
 ```bash
-open http://127.0.0.1:12346/swagger-ui/#/ 
+open http://127.0.0.1:12346/swagger-ui/#/
 ```
 
-### Example: Query the `ValueSetter` Module's state value
+### Example: Query rollup health
 
-For now, you should just see null returned for the value state item, as the item hasn't been initialized:
+Verify the node is up before submitting transactions:
 
-```bash,test-ci,bashtestmd:compare-output
-$ curl http://127.0.0.1:12346/modules/value-setter/state/value
-{"value":null}
+```bash,test-ci
+$ curl -s http://127.0.0.1:12346/health
 ```
 
 ## Programmatic Interaction with TypeScript
@@ -172,35 +170,13 @@ const subscription = rollup.subscribe("events", handleNewEvent);
 subscription.unsubscribe();
 ```
 
-### Interacting with different modules
-
-To interact with different modules, simply change the call message. 
-The top-level key corresponds to the [module's variable name in the runtime](/crates/stf/stf-declaration/src/lib.rs#L86), 
-and the nested key is the [CallMessage](examples/value-setter/src/lib.rs#L61) enum variant in snake_case:
-
-```js
-// Example: Call the ValueSetter's SetValue method
-let callMessage: RuntimeCall = {
-  value_setter: {  // Must match Runtime field name of the module
-    set_value: 10  
-  },
-};
-```
-
-This transaction would set the ValueSetter's state value to 10. Try setting the [example file's call message](examples/starter-js/src/index.ts#L29) to the expression above and re-running the script. Then verify that the ValueSetter's value changed using [the curl command](#example-query-the-valuesetter-modules-state-value) we showed earlier. 
-
-This time, the curl command should return:
-```json
-{"value":10}
-```
-
 ### Learn more
 
-To learn more about building with Sovereign SDK, experiment with the [ValueSetter](/examples/value-setter/src/lib.rs). For a deeper understanding of the abstractions, see the [Quickstart: Your First Module](https://docs.sovereign.xyz/3-quickstart.html) section of the SDK book.
+To learn more about building with Sovereign SDK, see the [Quickstart: Your First Module](https://docs.sovereign.xyz/3-quickstart.html) section of the SDK book.
 
 ## Observability stack
 
-Starter repo has a helper command to spin up the local observability stack for your rollup. Just run `make start-obs`, 
+Starter repo has a helper command to spin up the local observability stack for your rollup. Just run `make start-obs`,
 and it will spin up all necessary Docker containers and provision Grafana dashboards for the rollup:
 
 ```bash
@@ -218,7 +194,6 @@ Waiting for all services to become healthy...
 To stop it run `make stop-obs` and it will shut down all containers.
 
 Learn more in our [Observability Tutorial](https://sovlabs.notion.site/Tutorial-Getting-started-with-Grafana-Cloud-17e47ef6566b80839fe5c563f5869017?pvs=74).
-
 
 ## Alternative Configurations
 
@@ -242,7 +217,7 @@ Proving is disabled by default. Enable it with these environment variables befor
 
 ### Paymaster Configuration
 
-By default, the gas costs of transactions submitted by the preferred sequencer are covered by the paymaster at address `0xA6edfca3AA985Dd3CC728BFFB700933a986aC085`. 
+By default, the gas costs of transactions submitted by the preferred sequencer are covered by the paymaster at address `0xA6edfca3AA985Dd3CC728BFFB700933a986aC085`.
 You can modify this in the [configuration file](configs/mock/genesis.json#L65).
 
 To run without a paymaster, just remove all payers from `paymaster` section:
@@ -262,23 +237,29 @@ With this change, the gas cost of each transaction will be covered by the sender
 ### Common Issues
 
 **"Address already in use" error when starting the node**
+
 - Another process is using port 12346. Either kill that process or modify the `bind_port` in your [rollup configuration file](configs/mock/rollup.toml#L28)
 
 **Transaction fails with "insufficient funds"**
+
 - If using the default configuration with paymaster, ensure the [paymaster address](configs/mock/genesis.json#L62) is correctly configured
 - If running without paymaster, ensure your account has sufficient balance for gas fees
 
 **"Module not found" errors in TypeScript**
+
 - Run `npm install` in the `examples/starter-js` directory
 - Ensure you're using Node.js 20.0 or later
 
 **Rollup node crashes on startup**
+
 - Try cleaning the database with `make clean-db` and restart
 - Verify you're using the correct Rust version (1.88.0 or later)
 
 **Rollup crashed with `buckets exhausted` error**
+
 - Increase parameter `storage.user_hashtable_buckets`
 - Clean the rollup database and resync from DA layer
 
 ## Additional Resources
+
 For more details, visit the [Sovereign SDK documentation](https://docs.sovereign.xyz).
