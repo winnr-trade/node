@@ -33,7 +33,6 @@ sov-evm = { workspace = true }
 sov-address = { workspace = true }
 
 tracing = { workspace = true }
-value-setter = { workspace = true }
 market = { workspace = true }
 orderbook = { workspace = true }
 shielded-pool= { workspace = true }
@@ -68,7 +67,6 @@ native = [
 	"sov-sequencer-registry/native",
 	# "sov-capabilities/native",
 	# "sov-state/native",
-	"value-setter/native",
 	"sov-rollup-apis",
 	"sov-kernels/native",
 	"sov-paymaster/native",

@@ -7,7 +7,6 @@ members = [
   "crates/stf",
   "crates/stf/stf-declaration",
   "crates/utils/node-discovery",
-  "examples/value-setter", 
   "scripts/acceptance-test",
   "scripts/soak-test",
   "modules/shared-types",
@@ -87,7 +86,6 @@ sov-metrics = { git = "https://github.com/Sovereign-Labs/sovereign-sdk.git", rev
 stf-starter = { path = "./crates/stf", default-features = false }
 stf-starter-declaration = { path = "./crates/stf/stf-declaration", default-features = false }
 node-discovery = { path = "./crates/utils/node-discovery", default-features = false }
-value-setter = { path = "./examples/value-setter" }
 strum = { version = "0.26.3", features = ["derive"] }
 
 alloy-consensus = { version = "1.0.37", default-features = false }

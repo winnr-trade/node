@@ -81,7 +81,6 @@
   "interchain_gas_paymaster": null,
   "merkle_tree_hook": null,
   "warp": null,
-  "value_setter": null,
   "market": {
     "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
     "config": {

@@ -9838,7 +9838,6 @@ dependencies = [
  "sov-uniqueness",
  "strum 0.26.3",
  "tracing",
- "value-setter",
 ]
 
 [[package]]
@@ -10981,19 +10980,6 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
-
-[[package]]
-name = "value-setter"
-version = "0.3.0"
-dependencies = [
- "anyhow",
- "borsh 1.6.1",
- "schemars 0.8.22",
- "serde",
- "sov-bank",
- "sov-modules-api",
- "sov-state",
-]
 
 [[package]]
 name = "vcpkg"
