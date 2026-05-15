@@ -1,5 +1,10 @@
 # Overview
 
+This repository is the execution environment for Winnr, an information market infrastructure comprising:
+
+- **Winnr Markets**: a prediction market platform
+- **Winnr Oracle**: an optimistic oracle
+
 This repository provides a starting point for building rollups with the Sovereign SDK.
 
 It includes everything you need to create a rollup with customizable modules, REST API for state queries, TypeScript SDK for submitting transactions, WebSocket endpoints to subscribe to transactions and events, built-in token management, and much more.
