@@ -106,6 +106,7 @@ async fn main() -> anyhow::Result<()> {
     init_metrics_tracker(&monitoring_config, metrics_shutdown_receiver.clone());
 
     let max_age = std::time::Duration::from_millis(args.max_age_millis);
+
     let config_path = PathBuf::from(args.output_file);
 
     let content = create_lua_backend_cache_content(&ClusterInfo::default());
