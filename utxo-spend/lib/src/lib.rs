@@ -1,22 +1,17 @@
-use alloy_sol_types::sol;
+pub mod error;
+pub mod field;
+pub mod hash;
+pub mod merkle;
+pub mod note;
+pub mod public_values;
+pub mod transact;
 
-sol! {
-    /// The public values encoded as a struct that can be easily deserialized inside Solidity.
-    struct PublicValuesStruct {
-        uint32 n;
-        uint32 a;
-        uint32 b;
-    }
-}
-
-/// Compute the n'th fibonacci number (wrapping around on overflows), using normal Rust code.
-pub fn fibonacci(n: u32) -> (u32, u32) {
-    let mut a = 0u32;
-    let mut b = 1u32;
-    for _ in 0..n {
-        let c = a.wrapping_add(b);
-        a = b;
-        b = c;
-    }
-    (a, b)
-}
+pub use error::{TransactValidationError, TransactValidationResult};
+pub use field::{Felt, FeltExt};
+pub use merkle::{compute_merkle_root, index_from_bits, MerkleProof, TREE_DEPTH};
+pub use note::Note;
+pub use public_values::{PublicValues, PublicValuesStruct};
+pub use transact::{
+    build_public_inputs, validate_transact, verify_transaction, PrivateInputs, PublicInputs,
+    TransactWitness, MERKLE_TREE_DEPTH,
+};

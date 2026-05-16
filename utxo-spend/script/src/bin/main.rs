@@ -1,25 +1,16 @@
-//! An end-to-end example of using the SP1 SDK to generate a proof of a program that can be executed
-//! or have a core proof generated.
-//!
-//! You can run this script using the following command:
-//! ```shell
-//! RUST_LOG=info cargo run --release -- --execute
-//! ```
-//! or
-//! ```shell
-//! RUST_LOG=info cargo run --release -- --prove
-//! ```
-
 use alloy_sol_types::SolType;
 use clap::Parser;
-use utxo_spend_lib::PublicValuesStruct;
 use sp1_sdk::{
     blocking::{ProveRequest, Prover, ProverClient},
     include_elf, Elf, ProvingKey, SP1Stdin,
 };
+use utxo_spend_lib::{
+    build_public_inputs, compute_merkle_root, Felt, FeltExt, MerkleProof, Note, PrivateInputs,
+    PublicValuesStruct, TransactWitness, TREE_DEPTH,
+};
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-const UTXO_SPEND_ELF: Elf = include_elf!("utxo-spend-program");
+const UTXO_TRANSACT_ELF: Elf = include_elf!("utxo-spend-program");
 
 /// The arguments for the command.
 #[derive(Parser, Debug)]
@@ -36,51 +27,39 @@ struct Args {
 }
 
 fn main() {
-    // Setup the logger.
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
-
-    // Parse the command line arguments.
     let args = Args::parse();
 
     if args.execute == args.prove {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
     }
-
-    // Setup the prover client.
     let client = ProverClient::from_env();
-
-    // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    stdin.write(&args.n);
+    let witness = demo_witness(args.n as u64, true);
+    stdin.write(&witness);
 
-    println!("n: {}", args.n);
+    println!("private input value: {}", args.n);
 
     if args.execute {
-        // Execute the program
-        let (output, report) = client.execute(UTXO_SPEND_ELF, stdin).run().unwrap();
+        let (output, report) = client.execute(UTXO_TRANSACT_ELF, stdin).run().unwrap();
         println!("Program executed successfully.");
 
-        // Read the output.
         let decoded = PublicValuesStruct::abi_decode(output.as_slice()).unwrap();
-        let PublicValuesStruct { n, a, b } = decoded;
-        println!("n: {}", n);
-        println!("a: {}", a);
-        println!("b: {}", b);
-
-        let (expected_a, expected_b) = fibonacci_lib::fibonacci(n);
-        assert_eq!(a, expected_a);
-        assert_eq!(b, expected_b);
-        println!("Values are correct!");
-
-        // Record the number of cycles executed.
+        println!("merkle_root: 0x{}", hex::encode(decoded.merkle_root));
+        println!("nullifier: 0x{}", hex::encode(decoded.nullifier));
+        println!(
+            "output_commitment: 0x{}",
+            hex::encode(decoded.output_commitment)
+        );
+        println!("public_value: 0x{}", hex::encode(decoded.public_value));
+        println!("is_deposit: {}", decoded.is_deposit);
         println!("Number of cycles: {}", report.total_instruction_count());
     } else {
-        // Setup the program for proving.
-        let pk = client.setup(UTXO_SPEND_ELF).expect("failed to setup elf");
-
-        // Generate the proof
+        let pk = client
+            .setup(UTXO_TRANSACT_ELF)
+            .expect("failed to setup elf");
         let proof = client
             .prove(&pk, stdin)
             .run()
@@ -94,4 +73,47 @@ fn main() {
             .expect("failed to verify proof");
         println!("Successfully verified proof!");
     }
+}
+
+fn demo_witness(private_input_value: u64, is_deposit: bool) -> TransactWitness {
+    let owner = Felt::from_u64(42);
+    let input_value = Felt::from_u64(private_input_value);
+    let public_value = Felt::from_u64(10);
+    let output_value = if is_deposit {
+        input_value + public_value
+    } else {
+        input_value - public_value
+    };
+
+    let input_note = Note {
+        owner,
+        value: input_value,
+        salt: Felt::from_u64(7),
+    };
+
+    let output_note = Note {
+        owner,
+        value: output_value,
+        salt: Felt::from_u64(8),
+    };
+
+    let proof = MerkleProof {
+        siblings: vec![Felt::from_u64(0); TREE_DEPTH],
+        index_bits: vec![false; TREE_DEPTH],
+    };
+
+    let input_commitment = input_note.commitment();
+    let merkle_root =
+        compute_merkle_root(input_commitment, &proof).expect("fixed-depth demo merkle proof");
+
+    let private = PrivateInputs {
+        input_note,
+        output_note,
+        merkle_proof: proof,
+    };
+
+    let public = build_public_inputs(&private, merkle_root, public_value, is_deposit)
+        .expect("demo public input construction should succeed");
+
+    TransactWitness { private, public }
 }

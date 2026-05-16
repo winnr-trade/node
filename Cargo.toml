@@ -14,7 +14,10 @@ members = [
   "modules/market", 
   "modules/shielded-pool",
   "modules/pyth",
-  "modules/agent-wallet"
+  "modules/agent-wallet",
+  "utxo-spend/lib",
+  "utxo-spend/program",
+  "utxo-spend/script"
 ]
 default-members = ["crates/rollup", "crates/utils/node-discovery"]
 
@@ -87,6 +90,7 @@ stf-starter = { path = "./crates/stf", default-features = false }
 stf-starter-declaration = { path = "./crates/stf/stf-declaration", default-features = false }
 node-discovery = { path = "./crates/utils/node-discovery", default-features = false }
 strum = { version = "0.26.3", features = ["derive"] }
+alloy-sol-types = "*"
 
 alloy-consensus = { version = "1.0.37", default-features = false }
 axum = { version = "0.8.8", default-features = false }

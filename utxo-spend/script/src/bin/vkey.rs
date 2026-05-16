@@ -1,10 +1,12 @@
 use sp1_sdk::{blocking::MockProver, blocking::Prover, include_elf, Elf, HashableKey, ProvingKey};
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-const UTXO_SPEND_ELF: Elf = include_elf!("utxo-spend-program");
+const UTXO_TRANSACT_ELF: Elf = include_elf!("utxo-spend-program");
 
 fn main() {
     let prover = MockProver::new();
-    let pk = prover.setup(UTXO_SPEND_ELF).expect("failed to setup elf");
+    let pk = prover
+        .setup(UTXO_TRANSACT_ELF)
+        .expect("failed to setup elf");
     println!("{}", pk.verifying_key().bytes32());
 }
