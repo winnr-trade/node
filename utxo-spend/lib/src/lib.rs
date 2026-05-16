@@ -13,5 +13,5 @@ pub use note::Note;
 pub use public_values::{PublicValues, PublicValuesStruct};
 pub use transact::{
     build_public_inputs, validate_transact, verify_transaction, PrivateInputs, PublicInputs,
-    TransactWitness, MERKLE_TREE_DEPTH,
+    TransactInputs, MERKLE_TREE_DEPTH,
 };

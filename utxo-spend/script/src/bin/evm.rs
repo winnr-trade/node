@@ -8,7 +8,7 @@ use sp1_sdk::{
 use std::path::PathBuf;
 use utxo_spend_lib::{
     build_public_inputs, compute_merkle_root, Felt, FeltExt, MerkleProof, Note, PrivateInputs,
-    PublicValuesStruct, TransactWitness, TREE_DEPTH,
+    PublicValuesStruct, TransactInputs, TREE_DEPTH,
 };
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
@@ -104,7 +104,7 @@ fn create_proof_fixture(
     .expect("failed to write fixture");
 }
 
-fn demo_witness(private_input_value: u64, is_deposit: bool) -> TransactWitness {
+fn demo_witness(private_input_value: u64, is_deposit: bool) -> TransactInputs {
     let owner = Felt::from_u64(42);
     let input_value = Felt::from_u64(private_input_value);
     let public_value = Felt::from_u64(10);
@@ -144,5 +144,5 @@ fn demo_witness(private_input_value: u64, is_deposit: bool) -> TransactWitness {
     let public = build_public_inputs(&private, merkle_root, public_value, is_deposit)
         .expect("demo public input construction should succeed");
 
-    TransactWitness { private, public }
+    TransactInputs { private, public }
 }

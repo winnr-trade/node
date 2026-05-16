@@ -25,7 +25,7 @@ pub struct PublicInputs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactWitness {
+pub struct TransactInputs {
     pub private: PrivateInputs,
     pub public: PublicInputs,
 }
@@ -85,15 +85,15 @@ pub fn verify_transaction(
     Ok(())
 }
 
-pub fn validate_transact(witness: &TransactWitness) -> TransactValidationResult<PublicValues> {
-    verify_transaction(&witness.private, &witness.public)?;
+pub fn validate_transact(inputs: &TransactInputs) -> TransactValidationResult<PublicValues> {
+    verify_transaction(&inputs.private, &inputs.public)?;
 
     Ok(PublicValues {
-        merkle_root: witness.public.merkle_root,
-        nullifier: witness.public.nullifier,
-        output_commitment: witness.public.output_commitment,
-        public_value: witness.public.public_value,
-        is_deposit: witness.public.is_deposit,
+        merkle_root: inputs.public.merkle_root,
+        nullifier: inputs.public.nullifier,
+        output_commitment: inputs.public.output_commitment,
+        public_value: inputs.public.public_value,
+        is_deposit: inputs.public.is_deposit,
     })
 }
 
