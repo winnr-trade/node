@@ -4,3 +4,16 @@ resolver = "2"
 
 [workspace.dependencies]
 alloy-sol-types = "*"
+clap = { version = "4.0", features = ["derive", "env"] }
+dotenv = "0.15.0"
+ff = "0.13.1"
+hex = "0.4.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+slop-bn254 = "6.0.0"
+slop-symmetric = "6.0.0"
+sp1-build = { version = "6.0.1" }
+sp1-sdk = { version = "6.0.1", features = ["blocking", "native-gnark"] }
+sp1-zkvm = { version = "6.0.1" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1.40"

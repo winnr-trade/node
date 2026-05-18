@@ -17,15 +17,16 @@ name = "vkey"
 path = "src/bin/vkey.rs"
 
 [dependencies]
-sp1-sdk = { version = "6.0.1", features = ["blocking", "native-gnark"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-serde = { version = "1.0.200", default-features = false, features = ["derive"] }
-clap = { version = "4.0", features = ["derive", "env"] }
-tracing = "0.1.40"
-hex = "0.4.3"
+sp1-sdk = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+hex = { workspace = true }
 alloy-sol-types = { workspace = true }
 utxo-spend-lib = { path = "../lib" }
-dotenv = "0.15.0"
+dotenv = { workspace = true }
+tokio = { workspace = true }
 
 [build-dependencies]
-sp1-build = { version = "6.0.1" }
+sp1-build = { workspace = true }

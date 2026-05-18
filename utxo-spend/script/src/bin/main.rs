@@ -1,9 +1,7 @@
 use alloy_sol_types::SolType;
 use clap::Parser;
-use sp1_sdk::{
-    blocking::{ProveRequest, Prover, ProverClient},
-    include_elf, Elf, ProvingKey, SP1Stdin,
-};
+use sp1_sdk::{include_elf, Elf, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
+use std::time::Instant;
 use utxo_spend_lib::{
     build_public_inputs, compute_merkle_root, Felt, FeltExt, MerkleProof, Note, PrivateInputs,
     PublicValuesStruct, TransactInputs, TREE_DEPTH,
@@ -26,7 +24,8 @@ struct Args {
     n: u32,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
     let args = Args::parse();
@@ -35,7 +34,7 @@ fn main() {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
     }
-    let client = ProverClient::from_env();
+    let client = ProverClient::from_env().await;
     let mut stdin = SP1Stdin::new();
     let witness = demo_witness(args.n as u64, true);
     stdin.write(&witness);
@@ -43,7 +42,9 @@ fn main() {
     println!("private input value: {}", args.n);
 
     if args.execute {
-        let (output, report) = client.execute(UTXO_TRANSACT_ELF, stdin).run().unwrap();
+        tracing::info!("starting execute phase");
+        let (output, report) = client.execute(UTXO_TRANSACT_ELF, stdin).await.unwrap();
+        tracing::info!("execute phase completed");
         println!("Program executed successfully.");
 
         let decoded = PublicValuesStruct::abi_decode(output.as_slice()).unwrap();
@@ -57,21 +58,49 @@ fn main() {
         println!("is_deposit: {}", decoded.is_deposit);
         println!("Number of cycles: {}", report.total_instruction_count());
     } else {
+        let total_start = Instant::now();
+        let setup_start = Instant::now();
+        tracing::info!("starting setup phase");
         let pk = client
             .setup(UTXO_TRANSACT_ELF)
+            .await
             .expect("failed to setup elf");
+        let setup_elapsed = setup_start.elapsed();
+        tracing::info!("setup phase completed");
+
+        let prove_start = Instant::now();
+        tracing::info!("starting prove phase");
         let proof = client
             .prove(&pk, stdin)
-            .run()
+            .core()
+            .await
             .expect("failed to generate proof");
+        let prove_elapsed = prove_start.elapsed();
+        let proof_size_bytes = proof.bytes().len();
+        tracing::info!("prove phase completed");
 
         println!("Successfully generated proof!");
+        println!("Proof system: Core");
+        println!("Proof size: {} bytes", proof_size_bytes);
+        println!("Setup only: {:.3}s", setup_elapsed.as_secs_f64());
+        println!("Proof generation only: {:.3}s", prove_elapsed.as_secs_f64());
 
         // Verify the proof.
+        let verify_start = Instant::now();
+        tracing::info!("starting verify phase");
         client
             .verify(&proof, pk.verifying_key(), None)
             .expect("failed to verify proof");
+        let verify_elapsed = verify_start.elapsed();
+        let total_elapsed = total_start.elapsed();
+        tracing::info!("verify phase completed");
+
         println!("Successfully verified proof!");
+        println!("Verify only: {:.3}s", verify_elapsed.as_secs_f64());
+        println!(
+            "End-to-end (prove path): {:.3}s",
+            total_elapsed.as_secs_f64()
+        );
     }
 }
 

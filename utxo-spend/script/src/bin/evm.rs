@@ -1,5 +1,5 @@
 use alloy_sol_types::SolType;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use serde::{Deserialize, Serialize};
 use sp1_sdk::{
     blocking::{ProveRequest, Prover, ProverClient},
@@ -23,16 +23,6 @@ struct EVMArgs {
 
     #[arg(long, default_value_t = true)]
     is_deposit: bool,
-
-    #[arg(long, value_enum, default_value = "groth16")]
-    system: ProofSystem,
-}
-
-/// Enum representing the available proof systems
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
-enum ProofSystem {
-    Plonk,
-    Groth16,
 }
 
 /// A fixture that can be used to test the verification of SP1 zkVM proofs inside Solidity.
@@ -61,23 +51,19 @@ fn main() {
 
     println!("private_input_value: {}", args.private_input_value);
     println!("is_deposit: {}", args.is_deposit);
-    println!("Proof System: {:?}", args.system);
+    println!("Proof System: Groth16");
 
-    let proof = match args.system {
-        ProofSystem::Plonk => client.prove(&pk, stdin).plonk().run(),
-        ProofSystem::Groth16 => client.prove(&pk, stdin).groth16().run(),
-    }
-    .expect("failed to generate proof");
+    let proof = client
+        .prove(&pk, stdin)
+        .groth16()
+        .run()
+        .expect("failed to generate proof");
 
-    create_proof_fixture(&proof, pk.verifying_key(), args.system);
+    create_proof_fixture(&proof, pk.verifying_key());
 }
 
 /// Create a fixture for the given proof.
-fn create_proof_fixture(
-    proof: &SP1ProofWithPublicValues,
-    vk: &SP1VerifyingKey,
-    system: ProofSystem,
-) {
+fn create_proof_fixture(proof: &SP1ProofWithPublicValues, vk: &SP1VerifyingKey) {
     let bytes = proof.public_values.as_slice();
     let decoded = PublicValuesStruct::abi_decode(bytes).unwrap();
 
@@ -98,7 +84,7 @@ fn create_proof_fixture(
     let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../contracts/src/fixtures");
     std::fs::create_dir_all(&fixture_path).expect("failed to create fixture path");
     std::fs::write(
-        fixture_path.join(format!("{:?}-fixture.json", system).to_lowercase()),
+        fixture_path.join("groth16-fixture.json"),
         serde_json::to_string_pretty(&fixture).unwrap(),
     )
     .expect("failed to write fixture");

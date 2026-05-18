@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 alloy-sol-types = { workspace = true }
-ff = "0.13.1"
-serde = { version = "1.0", features = ["derive"] }
-slop-bn254 = "6.0.0"
-slop-symmetric = "6.0.0"
+ff = { workspace = true }
+serde = { workspace = true }
+slop-bn254 = { workspace = true }
+slop-symmetric = { workspace = true }

@@ -1,3 +1,5 @@
+use core::fmt::{self, Display, Formatter};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransactValidationError {
     ValueOutOfRange,
@@ -10,8 +12,8 @@ pub enum TransactValidationError {
     ValueConservationFailed,
 }
 
-impl core::fmt::Display for TransactValidationError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl Display for TransactValidationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::ValueOutOfRange => write!(f, "private value exceeds allowed u64 range"),
             Self::PublicValueOutOfRange => write!(f, "public value exceeds allowed u64 range"),

@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 alloy-sol-types = { workspace = true }
-sp1-zkvm = { version = "6.0.1" }
+sp1-zkvm = { workspace = true }
 utxo-spend-lib = { path = "../lib" }
