@@ -192,7 +192,6 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 commitment,
                 nullifier,
                 &stealth_address,
-                token_id,
                 ctx,
                 state,
             ),

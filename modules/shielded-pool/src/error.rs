@@ -15,8 +15,17 @@ pub enum ShieldedPoolError {
     #[error("Already shielded: User has already made a deposit.")]
     AlreadyShielded,
 
-    #[error("")]
+    #[error("unknown Merkle root: {root:?}")]
+    UnknownRoot { root: HexHash },
+
+    #[error("invalid proof")]
     InvalidProof,
+
+    #[error("proof serialization error: {message}")]
+    Serialization { message: String },
+
+    #[error("proof verification failed: {message}")]
+    VerificationFailed { message: String },
 
     // So we can still wrap anyhow::Error for unexpected errors
     // State getters/setters often use anyhow

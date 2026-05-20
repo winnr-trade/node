@@ -74,7 +74,7 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
     };
 
     // Shielded pool genesis
-    let shielded_pool_config = ShieldedPoolGenesisConfig { admin: admin_addr };
+    let shielded_pool_config = ShieldedPoolGenesisConfig { admin: admin_addr, token_id: collateral_token_id };
 
     let genesis = GenesisConfig::from_minimal_config(
         genesis_config.into(),

@@ -6,10 +6,12 @@ edition.workspace = true
 
 [dependencies]
 light-poseidon = "0.4.0"
-ark-bn254 = "0.5.0"
-ark-ff = "0.5.0"
 ark-circom = "0.5.0"
+ark-ff = "0.5.0"
+ark-bn254 = "0.5.0"
 ark-groth16 = "0.5.0"
+ark-serialize = "0.5.0"
+ark-snark = "0.5.0"
 
 # Shared types
 shared-types = { workspace = true }
