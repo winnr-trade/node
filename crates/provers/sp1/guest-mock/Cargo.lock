@@ -7705,6 +7705,8 @@ dependencies = [
  "ark-circom",
  "ark-ff 0.5.0",
  "ark-groth16",
+ "ark-serialize 0.5.0",
+ "ark-snark",
  "borsh 1.6.1",
  "light-poseidon",
  "schemars 0.8.22",
