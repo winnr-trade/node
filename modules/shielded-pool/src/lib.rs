@@ -15,21 +15,21 @@ mod event;
 mod genesis;
 mod hash;
 mod tree;
+mod types;
 pub mod verifier;
 
-use std::iter;
-
-pub use call::{CallMessage, Proof};
+pub use call::CallMessage;
 pub use error::ShieldedPoolError;
 pub use event::ShieldedPoolEvent;
 pub use genesis::ShieldedPoolGenesisConfig;
 pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
+pub use types::{ProofBytes, PublicInputs};
 
 use crate::{error::IntoShieldedPoolError, hash::poseidon_t4};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    self, Context, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, SafeVec, Spec, StateMap,
+    self, Context, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap,
     StateValue, TxState,
 };
 
@@ -60,10 +60,9 @@ pub struct ShieldedPoolModule<S: Spec> {
     #[state]
     pub commitments: StateMap<HexHash, bool>,
 
-    /// Allowlist of token IDs accepted by the pool.
-    // TODO: Enforce this check in deposit/withdraw handlers.
+    /// The single token accepted by this pool (same as the market collateral token).
     #[state]
-    pub supported_tokens: StateMap<TokenId, bool>,
+    pub token_id: StateValue<TokenId>,
 
     #[module]
     pub bank: Bank<S>,
@@ -95,27 +94,29 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
         state: &mut impl TxState<Self::Spec>,
     ) -> Result<(), Self::Error> {
         match msg {
-            CallMessage::ShieldFirst {
-                token_id,
-                amount,
-                blinded_address,
-            } => self.deposit_first(token_id, amount, blinded_address, ctx, state),
-
-            CallMessage::Shield {
+            CallMessage::CreateAccount {
                 proof,
-                token_id,
+                root,
                 amount,
                 commitment,
                 nullifier,
-            } => self.deposit(proof, token_id, amount, commitment, nullifier, ctx, state),
+            } => self.create_account(proof, root, amount, commitment, nullifier, ctx, state),
 
-            CallMessage::UnShield {
+            CallMessage::Deposit {
                 proof,
-                token_id,
+                root,
                 amount,
                 commitment,
                 nullifier,
-            } => self.withdraw(proof, token_id, amount, commitment, nullifier, ctx, state),
+            } => self.deposit(proof, root, amount, commitment, nullifier, ctx, state),
+
+            CallMessage::Withdraw {
+                proof,
+                root,
+                amount,
+                commitment,
+                nullifier,
+            } => self.withdraw(proof, root, amount, commitment, nullifier, ctx, state),
         }
     }
 }
@@ -125,11 +126,20 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
 // ============================================================================
 
 impl<S: Spec> ShieldedPoolModule<S> {
-    fn deposit_first(
+    fn get_token_id(&self, state: &mut impl TxState<S>) -> Result<TokenId, ShieldedPoolError> {
+        self.token_id
+            .get(state)
+            .into_shielded_pool_err()?
+            .ok_or_else(|| ShieldedPoolError::Any(anyhow::anyhow!("token_id not initialized")))
+    }
+
+    fn create_account(
         &mut self,
-        token_id: TokenId,
-        amount: u64,
-        blinded_address: HexHash,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
+        commitment: HexHash,
+        nullifier: HexHash,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -142,33 +152,24 @@ impl<S: Spec> ShieldedPoolModule<S> {
             return Err(ShieldedPoolError::AlreadyShielded);
         }
 
-        self.bank
-            .transfer_from(
-                ctx.sender(),
-                self.id.to_payable(),
-                Coins {
-                    token_id,
-                    amount: Amount(amount as u128),
-                },
-                state,
-            )
-            .into_shielded_pool_err()?;
+        let token_id = self.get_token_id(state)?;
+        if amount != Amount(0) {
+            self.bank
+                .transfer_from(
+                    ctx.sender(),
+                    self.id.to_payable(),
+                    Coins { token_id, amount },
+                    state,
+                )
+                .into_shielded_pool_err()?;
+        }
 
-        let commitment = Self::calculate_commitment(token_id, amount, blinded_address);
-
-        self.tree
-            .get_or_err(state)
-            .into_shielded_pool_err()?
-            .into_shielded_pool_err()?
-            .insert(commitment)
-            .into_shielded_pool_err()?;
+        self.transact(
+            proof, root, amount, commitment, nullifier, true, true, ctx, state,
+        )?;
 
         self.has_shielded
             .set(ctx.sender(), &true, state)
-            .into_shielded_pool_err()?;
-
-        self.commitments
-            .set(&commitment, &true, state)
             .into_shielded_pool_err()?;
 
         Ok(())
@@ -176,36 +177,36 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     fn deposit(
         &mut self,
-        proof: Proof,
-        token_id: TokenId,
-        amount: u64,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
-        self.transact(proof, token_id, amount, commitment, nullifier, ctx, state)?;
-
+        let token_id = self.get_token_id(state)?;
         self.bank
             .transfer_from(
                 ctx.sender(),
                 self.id.to_payable(),
-                Coins {
-                    token_id,
-                    amount: Amount(amount as u128),
-                },
+                Coins { token_id, amount },
                 state,
             )
             .into_shielded_pool_err()?;
+
+        self.transact(
+            proof, root, amount, commitment, nullifier, true, false, ctx, state,
+        )?;
 
         Ok(())
     }
 
     fn withdraw(
         &mut self,
-        proof: Proof,
-        token_id: TokenId,
-        amount: u64,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
         ctx: &Context<S>,
@@ -213,9 +214,9 @@ impl<S: Spec> ShieldedPoolModule<S> {
     ) -> Result<(), ShieldedPoolError> {
         self.withdraw_to(
             proof,
+            root,
             commitment,
             nullifier,
-            token_id,
             amount,
             ctx.sender(),
             ctx,
@@ -225,27 +226,22 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     pub fn withdraw_to(
         &mut self,
-        proof: Proof,
+        proof: ProofBytes,
+        root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
-        token_id: TokenId,
-        amount: u64,
+        amount: Amount,
         to: impl Payable<S>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
-        self.transact(proof, token_id, amount, commitment, nullifier, ctx, state)?;
+        self.transact(
+            proof, root, amount, commitment, nullifier, false, false, ctx, state,
+        )?;
 
+        let token_id = self.get_token_id(state)?;
         self.bank
-            .transfer_from(
-                self.id.to_payable(),
-                to,
-                Coins {
-                    token_id,
-                    amount: Amount(amount as u128),
-                },
-                state,
-            )
+            .transfer_from(self.id.to_payable(), to, Coins { token_id, amount }, state)
             .into_shielded_pool_err()?;
 
         Ok(())
@@ -253,15 +249,16 @@ impl<S: Spec> ShieldedPoolModule<S> {
 
     fn transact(
         &mut self,
-        _proof: Proof,
-        _token_id: TokenId,
-        _amount: u64,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        is_deposit: bool,
+        is_new_account: bool,
         _ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
-        // Check if the nullifier has already been used
         if self
             .nullifiers
             .get(&nullifier, state)
@@ -271,7 +268,6 @@ impl<S: Spec> ShieldedPoolModule<S> {
             return Err(ShieldedPoolError::DuplicateNullifier { nullifier });
         }
 
-        // Check if the commitment has already been used
         if self
             .commitments
             .get(&commitment, state)
@@ -281,14 +277,26 @@ impl<S: Spec> ShieldedPoolModule<S> {
             return Err(ShieldedPoolError::DuplicateCommitment { commitment });
         }
 
-        // TODO: Verify the ZK proof before proceeding.
-        // let is_valid = verify_proof(proof, public_values_bytes, sp1_vkey_hash);
-        let is_valid = true; // Placeholder until proof verification is implemented
-        if !is_valid {
-            return Err(ShieldedPoolError::InvalidProof);
+        let mut tree = self
+            .tree
+            .get_or_err(state)
+            .into_shielded_pool_err()?
+            .into_shielded_pool_err()?;
+
+        if !tree.is_known_root(root) {
+            return Err(ShieldedPoolError::UnknownRoot { root });
         }
 
-        // Mark the nullifier and commitment as used to prevent double-spending and duplicates.
+        Self::verify_proof(
+            &proof,
+            root,
+            amount,
+            nullifier,
+            commitment,
+            is_new_account,
+            is_deposit,
+        )?;
+
         self.nullifiers
             .set(&nullifier, &true, state)
             .into_shielded_pool_err()?;
@@ -296,13 +304,9 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .set(&commitment, &true, state)
             .into_shielded_pool_err()?;
 
-        // Insert the new commitment into the tree.
-        self.tree
-            .get_or_err(state)
-            .into_shielded_pool_err()?
-            .into_shielded_pool_err()?
-            .insert(commitment)
-            .into_shielded_pool_err()?;
+        tree.insert(commitment)
+            .map_err(|e| ShieldedPoolError::Any(anyhow::anyhow!("{}", e)))?;
+        self.tree.set(&tree, state).into_shielded_pool_err()?;
 
         Ok(())
     }
@@ -310,24 +314,58 @@ impl<S: Spec> ShieldedPoolModule<S> {
     // ========================================================================
     // HELPERS
     // ========================================================================
-    // fn shielded_pool_address(&self) -> Payable<S> {
-    //     self.id().to_payable()
-    // const SHIELDED_POOL_ADDRESS: [u8; 32] = [2; 32];
-    // S::Address::from(CredentialId::from_bytes(SHIELDED_POOL_ADDRESS))
-    // }
 
-    /// Compute a binding commitment from the deposit parameters.
-    fn calculate_commitment(token_id: TokenId, amount: u64, blinded_address: HexHash) -> HexHash {
-        let h = poseidon_t4(
-            &token_id.as_bytes(),
-            &iter::repeat(0u8)
-                .take(24)
-                .chain(amount.to_be_bytes())
-                .collect::<Vec<u8>>()
-                .try_into()
-                .unwrap(),
-            &blinded_address.0,
-        );
+    fn verify_proof(
+        proof_bytes: &ProofBytes,
+        root: HexHash,
+        amount: Amount,
+        nullifier: HexHash,
+        commitment: HexHash,
+        is_deposit: bool,
+        is_new_account: bool,
+    ) -> Result<(), ShieldedPoolError> {
+        let proof = proof_bytes.to_ark_proof();
+        let mut amount_bytes = HexHash::new([0u8; 32]);
+        amount_bytes.0[16..].copy_from_slice(&amount.0.to_be_bytes());
+
+        let (public_deposit_amount, public_withdraw_amount) = if is_deposit {
+            (amount_bytes, HexHash::new([0; 32]))
+        } else {
+            (HexHash::new([0; 32]), amount_bytes)
+        };
+
+        let mut force_dummy_note = HexHash::new([0u8; 32]);
+        if is_new_account {
+            force_dummy_note.0[31] = 1;
+        }
+
+        let public_inputs = &PublicInputs(vec![
+            root,
+            nullifier,
+            commitment,
+            force_dummy_note,
+            public_deposit_amount,
+            public_withdraw_amount,
+        ])
+        .to_fr_vec();
+
+        let valid = verifier::verify(&proof, public_inputs).map_err(|e| {
+            ShieldedPoolError::VerificationFailed {
+                message: e.to_string(),
+            }
+        })?;
+
+        if valid {
+            Ok(())
+        } else {
+            Err(ShieldedPoolError::InvalidProof)
+        }
+    }
+
+    fn calculate_commitment(amount: Amount, owner: HexHash, salt: HexHash) -> HexHash {
+        let mut amount_bytes = [0u8; 32];
+        amount_bytes[16..].copy_from_slice(&amount.0.to_be_bytes());
+        let h = poseidon_t4(&owner.0, &amount_bytes, &salt.0);
 
         HexHash::new(h)
     }
