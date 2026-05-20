@@ -35,6 +35,8 @@ pub enum CallMessage<S: Spec> {
     PlaceOrderStealth {
         /// Zero-knowledge proof of ownership of the stealth address and validity of the withdrawal.
         proof: Proof,
+        /// Merkle root of the shielded pool at the time of order placement.
+        root: HexHash,
         /// Commitment corresponding to the proof.
         commitment: HexHash,
         /// Nullifier to prevent double-spending.
@@ -43,8 +45,6 @@ pub enum CallMessage<S: Spec> {
         stealth_address: S::Address,
         /// Which prediction market.
         market_id: MarketId,
-        /// Token ID for collateral.
-        token_id: TokenId,
         /// YES or NO outcome.
         outcome: OutcomeSide,
         /// Buy or Sell.

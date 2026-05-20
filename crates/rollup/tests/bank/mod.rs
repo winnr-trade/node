@@ -81,7 +81,7 @@ async fn bank_tx_tests() -> Result<(), anyhow::Error> {
 }
 
 async fn send_test_create_token_tx(client: &NodeClient) -> Result<(), anyhow::Error> {
-    let key_and_address = read_private_keys::<TestSpec>("tx_signer_private_key.json");
+    let key_and_address = read_private_keys::<TestSpec>("tx_signer.json");
     let key = key_and_address.private_key;
     let user_address: <TestSpec as Spec>::Address = key_and_address.address;
 

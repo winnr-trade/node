@@ -1,7 +1,6 @@
 //! Error types for the market module.
 
 use shared_types::{MarketId, MarketStatus, Size};
-use sov_bank::TokenId;
 use sov_modules_api::{err_detail, ErrorContext, ErrorDetail, StateValueError};
 
 #[derive(Debug, thiserror::Error, serde::Serialize)]
@@ -22,9 +21,6 @@ pub enum MarketError {
 
     #[error("Market {market_id} is not yet resolved")]
     MarketNotResolved { market_id: MarketId },
-
-    #[error("Unsupported collateral token: {token_id}")]
-    UnsupportedCollateralToken { token_id: TokenId },
 
     #[error("Unauthorized resolver for market {market_id}: expected {expected}, got {actual}")]
     UnauthorizedResolver {

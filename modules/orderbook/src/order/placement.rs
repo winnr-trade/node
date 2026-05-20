@@ -6,7 +6,7 @@ use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDE
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side, Size};
 use shielded_pool::Proof;
-use sov_bank::{Amount, TokenId};
+use sov_bank::Amount;
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
 use tracing::debug;
 
@@ -28,14 +28,16 @@ impl<S: Spec> OrderbookModule<S> {
         &mut self,
         order_request: OrderRequest,
         proof: Proof,
+        root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
         stealth_address: &S::Address,
-        token_id: TokenId,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        unimplemented!("Stealth orders call not open yet");
+        // TODO: compute required collateral from order_request and call
+        //   self.shielded_pool.withdraw_to(proof, root, commitment, nullifier, amount, stealth_address, ctx, state)
+        self.place_order(order_request, stealth_address, state)
     }
 
     /// Cancel an order.

@@ -7,7 +7,7 @@ use orderbook::{
 };
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
 use sov_bank::utils::TokenHolder;
-use sov_bank::{Amount, TokenId};
+use sov_bank::Amount;
 use sov_modules_api::SafeString;
 use sov_modules_api::TxEffect;
 use sov_test_utils::runtime::TestRunner;
@@ -58,33 +58,10 @@ pub fn get_time_ms(runner: &TestRunner<RT, S>) -> u64 {
     })
 }
 
-pub fn set_supported_collateral_token(
-    runner: &mut TestRunner<RT, S>,
-    admin: &TestUser<S>,
-    token_id: TokenId,
-) {
-    let msg = market::CallMessage::<S>::SetSupportedCollateralToken {
-        token_id,
-        support: true,
-    };
-
-    runner.execute_transaction(TransactionTestCase {
-        input: admin.create_plain_message::<RT, MarketModule<S>>(msg),
-        assert: Box::new(|result, _state| {
-            assert!(
-                result.tx_receipt.is_successful(),
-                "set_supported_collateral_token failed: {:?}",
-                result.tx_receipt
-            );
-        }),
-    });
-}
-
 pub fn create_test_market(
     runner: &mut TestRunner<RT, S>,
     creator: &TestUser<S>,
     resolver: &TestUser<S>,
-    collateral_token: TokenId,
 ) -> MarketId {
     let resolution_time = get_time_ms(runner) + 1_000_000;
 
@@ -100,7 +77,6 @@ pub fn create_test_market(
 
     let msg = market::CallMessage::<S>::CreateMarket {
         question: SafeString::from_str("Will this test pass?").ok().unwrap(),
-        collateral_token,
         resolution_time,
         resolver: market::Resolver::Address(resolver.address()),
     };

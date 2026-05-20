@@ -3,7 +3,6 @@
 use crate::types::Resolver;
 use schemars::JsonSchema;
 use shared_types::{MarketId, Outcome, Size};
-use sov_bank::TokenId;
 use sov_modules_api::macros::{serialize, UniversalWallet};
 use sov_modules_api::{SafeString, Spec};
 
@@ -28,8 +27,6 @@ pub enum CallMessage<S: Spec> {
     CreateMarket {
         /// The question bytes being predicted.
         question: SafeString,
-        /// Token used as collateral.
-        collateral_token: TokenId,
         /// Slot after which resolution is allowed.
         resolution_time: u64,
         /// How this market should be resolved.
@@ -70,14 +67,6 @@ pub enum CallMessage<S: Spec> {
     CompactUserActiveMarkets {
         /// Maximum entries to scan in this call.
         max_scan: u32,
-    },
-
-    /// Set supported collateral token (admin only).
-    SetSupportedCollateralToken {
-        /// Token to set support for.
-        token_id: TokenId,
-        /// Whether the token is supported.
-        support: bool,
     },
 
     /// Halt trading on a market (admin only).

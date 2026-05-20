@@ -54,8 +54,9 @@ pub struct MarketModule<S: Spec> {
     #[state]
     pub config: StateValue<MarketConfig>,
 
+    /// The single accepted collateral token for all markets.
     #[state]
-    pub supported_collateral_token: StateMap<TokenId, ()>,
+    pub collateral_token_id: StateValue<TokenId>,
 
     /// Counter for generating unique market IDs
     #[state]
@@ -115,17 +116,9 @@ impl<S: Spec> Module for MarketModule<S> {
         match msg {
             CallMessage::CreateMarket {
                 question,
-                collateral_token,
                 resolution_time,
                 resolver,
-            } => self.create_market(
-                question,
-                collateral_token,
-                resolution_time,
-                resolver,
-                ctx,
-                state,
-            ),
+            } => self.create_market(question, resolution_time, resolver, ctx, state),
             CallMessage::MintShares { market_id, amount } => {
                 self.mint_shares(market_id, amount, ctx, state)
             }
@@ -137,11 +130,6 @@ impl<S: Spec> Module for MarketModule<S> {
             CallMessage::ResolveMarket { market_id, data } => {
                 self.resolve_market(market_id, data, ctx, state)
             }
-
-            CallMessage::SetSupportedCollateralToken {
-                token_id,
-                support: supported,
-            } => self.set_supported_collateral_token(token_id, supported, ctx, state),
 
             CallMessage::ClaimWinnings { market_id } => self.claim_winnings(market_id, ctx, state),
 

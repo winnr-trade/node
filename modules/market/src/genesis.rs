@@ -2,6 +2,7 @@
 
 use crate::{types::MarketConfig, MarketModule};
 use serde::{Deserialize, Serialize};
+use sov_bank::TokenId;
 use sov_modules_api::{GenesisState, Spec};
 use tracing::info;
 
@@ -12,6 +13,8 @@ pub struct MarketGenesisConfig<S: Spec> {
     pub admin: S::Address,
     /// Market configuration parameters.
     pub config: MarketConfig,
+    /// The single collateral token accepted across all markets.
+    pub collateral_token_id: TokenId,
 }
 
 impl<S: Spec> MarketModule<S> {
@@ -23,10 +26,12 @@ impl<S: Spec> MarketModule<S> {
     ) -> anyhow::Result<()> {
         self.admin.set(&config.admin, state)?;
         self.config.set(&config.config, state)?;
+        self.collateral_token_id.set(&config.collateral_token_id, state)?;
         self.next_market_id.set(&0u64, state)?;
 
         info!(
             admin = %config.admin,
+            collateral_token_id = ?config.collateral_token_id,
             "Prediction market module initialized"
         );
         Ok(())
