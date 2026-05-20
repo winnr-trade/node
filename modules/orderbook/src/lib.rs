@@ -168,11 +168,11 @@ impl<S: Spec> Module for OrderbookModule<S> {
 
             CallMessage::PlaceOrderStealth {
                 proof,
+                root,
                 commitment,
                 nullifier,
                 stealth_address,
                 market_id,
-                token_id,
                 outcome,
                 side,
                 price,
@@ -188,6 +188,7 @@ impl<S: Spec> Module for OrderbookModule<S> {
                     order_type,
                 },
                 proof,
+                root,
                 commitment,
                 nullifier,
                 &stealth_address,

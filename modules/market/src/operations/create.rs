@@ -1,7 +1,7 @@
 use crate::error::{IntoMarketError, IntoMarketErrorFlat};
 use crate::{Event, Market, MarketError, MarketModule, Resolver};
 use shared_types::{MarketId, Size};
-use sov_bank::{Amount, TokenId};
+use sov_bank::Amount;
 use sov_modules_api::{Context, EventEmitter, SafeString, Spec, TxState};
 use tracing::info;
 
@@ -10,39 +10,22 @@ impl<S: Spec> MarketModule<S> {
     pub(crate) fn create_market(
         &mut self,
         question: SafeString,
-        collateral_token: TokenId,
         resolution_time: u64,
         resolver: Resolver<S>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), MarketError> {
         let config = self.config.get_or_err(state).into_market_err_flat()?;
+        let collateral_token = self
+            .collateral_token_id
+            .get_or_err(state)
+            .into_market_err_flat()?;
 
         // Validate question length
         if question.len() > config.max_question_length {
             return Err(MarketError::QuestionTooLong {
                 length: question.len(),
                 max_length: config.max_question_length,
-            });
-        }
-
-        let token_exists = self
-            .bank
-            .get_token(&collateral_token, state)
-            .is_ok_and(|v| v.is_some());
-        if !token_exists {
-            return Err(MarketError::UnsupportedCollateralToken {
-                token_id: collateral_token,
-            });
-        }
-
-        let token_supported = self
-            .supported_collateral_token
-            .get(&collateral_token, state)
-            .is_ok_and(|v| v.is_some());
-        if !token_supported {
-            return Err(MarketError::UnsupportedCollateralToken {
-                token_id: collateral_token,
             });
         }
 

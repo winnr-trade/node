@@ -60,6 +60,7 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
             max_question_length: 256,
             min_market_duration: 0,
         },
+        collateral_token_id,
     };
 
     // Orderbook module genesis — zero fees for simpler test assertions
@@ -88,11 +89,8 @@ pub fn setup() -> (TestData<S>, TestRunner<TestRuntime<S>, S>) {
     // Advance one slot so chain time is initialized
     runner.advance_slots(1);
 
-    // Whitelist the collateral token before creating markets
-    utils::set_supported_collateral_token(&mut runner, &admin, collateral_token_id);
-
     // Create a prediction market for orderbook tests
-    let market_id = utils::create_test_market(&mut runner, &admin, &admin, collateral_token_id);
+    let market_id = utils::create_test_market(&mut runner, &admin, &admin);
 
     let test_data = TestData {
         admin,

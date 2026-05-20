@@ -28,14 +28,15 @@ impl<S: Spec> OrderbookModule<S> {
         &mut self,
         order_request: OrderRequest,
         proof: Proof,
+        root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
         stealth_address: &S::Address,
-        token_id: TokenId,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        unimplemented!("Stealth orders call not open yet");
+        self.shielded_pool.withdraw_to(proof, root, commitment, nullifier,  amount, to, ctx, state)
+        self.place_order(order_request, stealth_address, state)
     }
 
     /// Cancel an order.
