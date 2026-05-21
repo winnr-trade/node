@@ -11,21 +11,18 @@ use sov_test_utils::{AsUser, TransactionTestCase};
 fn test_claim_winnings_yes_outcome() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
     // Advance time and resolve
-    runner.advance_slots(500);
+    runner.advance_slots(600);
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Yes);
 
     // Claim winnings
@@ -56,20 +53,17 @@ fn test_claim_winnings_yes_outcome() {
 fn test_claim_winnings_no_outcome() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
     resolve_market_helper(&mut runner, &user, market_id, Outcome::No);
 
     let msg = CallMessage::ClaimWinnings { market_id };
@@ -96,14 +90,11 @@ fn test_claim_winnings_no_outcome() {
 fn test_claim_winnings_unresolved_market_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -151,20 +142,17 @@ fn test_claim_winnings_nonexistent_market_fails() {
 fn test_claim_winnings_twice_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
     mint_shares(&mut runner, &user, market_id, 100);
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Yes);
 
     // First claim should succeed
@@ -197,19 +185,16 @@ fn test_claim_winnings_no_shares_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
     let admin = test_data.admin;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
     mint_shares(&mut runner, &user, market_id, 100);
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Yes);
 
     // Admin has no shares, claiming should fail

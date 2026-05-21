@@ -17,7 +17,6 @@ fn test_create_market_success() {
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -46,7 +45,6 @@ fn test_create_market_resolution_time_in_past_fails() {
 
     let create_market_msg = CallMessage::CreateMarket {
         question: SafeString::from_str("Will it rain?").ok().unwrap(),
-        collateral_token: test_data.collateral_token_id,
         resolution_time: 0,
         resolver: Resolver::Address(user.address()),
     };
@@ -67,32 +65,10 @@ fn test_create_multiple_markets() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
     let admin = test_data.admin;
-    let collateral = test_data.collateral_token_id;
 
-    create_test_market(
-        &mut runner,
-        &user,
-        &user,
-        "Will BTC hit 100k?",
-        collateral,
-        86_400_000,
-    );
-    create_test_market(
-        &mut runner,
-        &admin,
-        &user,
-        "Will ETH hit 10k?",
-        collateral,
-        172_800_000,
-    );
-    create_test_market(
-        &mut runner,
-        &user,
-        &admin,
-        "Will SOL hit 1k?",
-        collateral,
-        259_200_000,
-    );
+    create_test_market(&mut runner, &user, &user, "Will BTC hit 100k?", 86_400_000);
+    create_test_market(&mut runner, &admin, &user, "Will ETH hit 10k?", 172_800_000);
+    create_test_market(&mut runner, &user, &admin, "Will SOL hit 1k?", 259_200_000);
 
     // Verify each market has the correct id and distinct properties
     let m1 = get_market(&runner, MarketId(0));

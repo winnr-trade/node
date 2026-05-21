@@ -2,8 +2,7 @@
 
 use schemars::JsonSchema;
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
-use shielded_pool::Proof;
-use sov_bank::TokenId;
+use shielded_pool::ProofBytes;
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
     HexHash, Spec,
@@ -34,7 +33,7 @@ pub enum CallMessage<S: Spec> {
     /// Place a new order.
     PlaceOrderStealth {
         /// Zero-knowledge proof of ownership of the stealth address and validity of the withdrawal.
-        proof: Proof,
+        proof: ProofBytes,
         /// Merkle root of the shielded pool at the time of order placement.
         root: HexHash,
         /// Commitment corresponding to the proof.

@@ -11,14 +11,11 @@ use sov_test_utils::{AsUser, TransactionTestCase};
 fn test_mint_shares_success() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -34,21 +31,18 @@ fn test_mint_shares_success() {
     assert_eq!(position.no_shares, Size(100));
 
     // Verify collateral tracking
-    assert_eq!(get_market_collateral(&runner, market_id), 100_000_000);
+    assert_eq!(get_market_collateral(&runner, market_id), 10_000_000_000);
 }
 
 #[test]
 fn test_mint_shares_multiple_times() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -64,21 +58,18 @@ fn test_mint_shares_multiple_times() {
     assert_eq!(position.yes_shares, Size(350));
     assert_eq!(position.no_shares, Size(350));
 
-    assert_eq!(get_market_collateral(&runner, market_id), 350_000_000);
+    assert_eq!(get_market_collateral(&runner, market_id), 35_000_000_000);
 }
 
 #[test]
 fn test_mint_shares_zero_amount_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -124,14 +115,11 @@ fn test_mint_shares_different_users() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
     let admin = test_data.admin;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -150,5 +138,5 @@ fn test_mint_shares_different_users() {
     // Verify combined market totals
     let market = get_market(&runner, market_id);
     assert_eq!(market.total_shares, Size(300));
-    assert_eq!(get_market_collateral(&runner, market_id), 300_000_000);
+    assert_eq!(get_market_collateral(&runner, market_id), 30_000_000_000);
 }
