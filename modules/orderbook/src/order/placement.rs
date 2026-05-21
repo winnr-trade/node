@@ -5,7 +5,7 @@ use crate::{Event, MatchResult, Order, OrderRequest, OrderbookError, OrderbookMo
 use agent_wallet::{SCOPE_CANCEL_ALL_ORDERS, SCOPE_CANCEL_ORDER, SCOPE_PLACE_ORDER};
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Side, Size};
-use shielded_pool::Proof;
+use shielded_pool::ProofBytes;
 use sov_bank::Amount;
 use sov_modules_api::{Context, EventEmitter, HexHash, SafeVec, Spec, TxState};
 use tracing::debug;
@@ -27,7 +27,7 @@ impl<S: Spec> OrderbookModule<S> {
     pub(crate) fn place_order_stealth(
         &mut self,
         order_request: OrderRequest,
-        proof: Proof,
+        proof: ProofBytes,
         root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
@@ -35,8 +35,38 @@ impl<S: Spec> OrderbookModule<S> {
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
-        // TODO: compute required collateral from order_request and call
-        //   self.shielded_pool.withdraw_to(proof, root, commitment, nullifier, amount, stealth_address, ctx, state)
+        if order_request.side != Side::Bid {
+            return Err(OrderbookError::StealthOrderMustBeBid);
+        }
+
+        let market = self
+            .market
+            .markets
+            .get(&order_request.market_id, state)
+            .into_orderbook_err()?
+            .ok_or(OrderbookError::MarketNotFound {
+                market_id: order_request.market_id,
+            })?;
+        let canonical = CanonicalOrder::normalize(
+            order_request.outcome,
+            order_request.side,
+            order_request.price,
+        );
+        let required_collateral =
+            canonical.required_collateral(order_request.quantity, &market.collateral_token);
+
+        self.shielded_pool
+            .withdraw_to(
+                proof,
+                root,
+                commitment,
+                nullifier,
+                required_collateral,
+                stealth_address,
+                ctx,
+                state,
+            )
+            .into_orderbook_err()?;
         self.place_order(order_request, stealth_address, state)
     }
 

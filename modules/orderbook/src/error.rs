@@ -49,6 +49,9 @@ pub enum OrderbookError {
     #[error("Quantity must be greater than zero")]
     ZeroQuantity,
 
+    #[error("Stealth orders must be Bid (Buy) orders; Ask orders from a stealth address use PlaceOrderNormal")]
+    StealthOrderMustBeBid,
+
     #[error("{0}")]
     #[serde(serialize_with = "serialize_anyhow")]
     Any(#[from] anyhow::Error),
