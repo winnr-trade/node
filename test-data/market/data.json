@@ -14,7 +14,7 @@
           "upper_bound": null
         }
       },
-      "resolution_time": 1798742400
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will SOL/USD exceed $300 before July 1, 2026?",
@@ -30,7 +30,7 @@
           "upper_bound": null
         }
       },
-      "resolution_time": 1782931200
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will BTC/USD exceed $120,000 by end of 2026?",
@@ -46,10 +46,10 @@
           "upper_bound": null
         }
       },
-      "resolution_time": 1798742400
+      "resolution_time": 1798741799000
     },
     {
-      "question": "Will SOL/USD exceed $500 before Jan 1, 2027?",
+      "question": "Will SOL/USD exceed $500 before Jan 1, 2026?",
       "resolver_type": "pyth",
       "resolver": {
         "Pyth": {
@@ -62,37 +62,37 @@
           "upper_bound": null
         }
       },
-      "resolution_time": 1798828800
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will corn futures (ZC) exceed $6.00 per bushel by end of Q3 2026?",
       "resolver_type": "optimistic",
       "resolver": { "Optimistic": {} },
-      "resolution_time": 1759276800
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will WTI crude oil close above $100 per barrel at any point in H2 2026?",
       "resolver_type": "optimistic",
       "resolver": { "Optimistic": {} },
-      "resolution_time": 1798742400
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will global wheat prices rise more than 20% by end of 2026 vs Jan 2026 levels?",
       "resolver_type": "optimistic",
       "resolver": { "Optimistic": {} },
-      "resolution_time": 1798742400
+      "resolution_time": 1798741799000
     },
     {
       "question": "Will a major central bank launch a retail CBDC in 2026?",
       "resolver_type": "address",
       "resolver": { "Address": "ADMIN_ADDRESS" },
-      "resolution_time": 1798742400
+      "resolution_time": 1798741799000
     },
     {
-      "question": "Will AI replace 50% of customer service jobs by 2027?",
+      "question": "Will AI replace 50% of customer service jobs by 2026?",
       "resolver_type": "address",
       "resolver": { "Address": "ADMIN_ADDRESS" },
-      "resolution_time": 1798828800
+      "resolution_time": 1798741799000
     }
   ]
 }

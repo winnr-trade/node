@@ -9,7 +9,8 @@ import marketMakerKey from "../../test-data/keys/market_maker.json";
 import { ChainState } from "./lib/chainState";
 import { Market } from "./lib/market";
 
-export const ROLLUP_ENDPOINT = "http://localhost:12346";
+// export const ROLLUP_ENDPOINT = "http://localhost:12346";
+export const ROLLUP_ENDPOINT = "https://rpc.test.winnr.trade";
 export const API_BASE_URL = `${ROLLUP_ENDPOINT}/modules`;
 
 export const rollup = await createStandardRollup({ url: ROLLUP_ENDPOINT });

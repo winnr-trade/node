@@ -1,6 +1,5 @@
 import {
   adminAddress,
-  chainState,
   market,
   marketMakerAddress,
   marketMakerSigner,
@@ -302,7 +301,6 @@ const main = async () => {
 
   // Create test markets if they don't already exist
   const marketCount = await market.getNextMarketId();
-  const currentTime = await chainState.time();
   if (marketCount === 0) {
     console.log("Creating test markets...");
     for (const m of testMarketData.markets) {
@@ -326,7 +324,7 @@ const main = async () => {
       await createMarket({
         question: m.question,
         collateralTokenId: tokenId,
-        resolutionTime: currentTime + 7 * 24 * 60 * 60 * 1000,
+        resolutionTime: m.resolution_time,
         resolver,
       });
     }
@@ -334,19 +332,21 @@ const main = async () => {
     console.log(`Using existing markets (count: ${marketCount})`);
   }
 
-  const marketId = 0;
-  console.log(`Provisioning inventory for market ${marketId}...`);
+  const totalMarkets = await market.getNextMarketId();
+  for (let marketId = 6; marketId < totalMarkets; marketId += 1) {
+    console.log(`Provisioning inventory for market ${marketId}...`);
 
-  const liquidityPlan = buildLiquidityPlan(marketId, LIQUIDITY_CONFIG);
-  const makerSharesNeeded =
-    Math.max(liquidityPlan.makerAskYes, liquidityPlan.makerAskNo) + 500;
+    const liquidityPlan = buildLiquidityPlan(marketId, LIQUIDITY_CONFIG);
+    const makerSharesNeeded =
+      Math.max(liquidityPlan.makerAskYes, liquidityPlan.makerAskNo) + 500;
 
-  await mintShares(marketId, makerSharesNeeded, marketMakerSigner);
+    await mintShares(marketId, makerSharesNeeded, marketMakerSigner);
 
-  console.log(
-    `Seeding programmatic liquidity (mid=${LIQUIDITY_CONFIG.midPrice}, spread=${LIQUIDITY_CONFIG.halfSpread * 2}, levels=${LIQUIDITY_CONFIG.levels})...`,
-  );
-  await placeProgrammaticLiquidity(liquidityPlan, marketId);
+    console.log(
+      `Seeding programmatic liquidity (mid=${LIQUIDITY_CONFIG.midPrice}, spread=${LIQUIDITY_CONFIG.halfSpread * 2}, levels=${LIQUIDITY_CONFIG.levels})...`,
+    );
+    await placeProgrammaticLiquidity(liquidityPlan, marketId);
+  }
 
   console.log(
     "Seed complete: deep and tight orderbook liquidity is now in place.",
