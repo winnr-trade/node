@@ -5,7 +5,7 @@ use market::ResolutionData;
 use market::{CallMessage, Market, MarketModule, Position, PositionKey, Resolver};
 use shared_types::{MarketId, Outcome, Size};
 use sov_bank::utils::TokenHolder;
-use sov_bank::{Amount, TokenId};
+use sov_bank::Amount;
 use sov_modules_api::da::Time;
 use sov_modules_api::SafeString;
 use sov_test_utils::runtime::TestRunner;
@@ -31,7 +31,6 @@ pub fn create_test_market(
     creator: &TestUser<S>,
     resolver: &TestUser<S>,
     question: &str,
-    collateral_token: TokenId,
     resolution_time_offset_ms: u64,
 ) -> (MarketId, u64) {
     let resolution_time = get_time_ms(runner) + resolution_time_offset_ms;
@@ -49,7 +48,6 @@ pub fn create_test_market(
 
     let msg = CallMessage::CreateMarket {
         question: SafeString::from_str(question).ok().unwrap(),
-        collateral_token,
         resolution_time,
         resolver: Resolver::Address(resolver.address()),
     };
@@ -169,7 +167,6 @@ pub fn create_test_market_with_resolver(
     creator: &TestUser<S>,
     resolver: Resolver<S>,
     question: &str,
-    collateral_token: TokenId,
     resolution_time_offset_ms: u64,
 ) -> (MarketId, u64) {
     let resolution_time = get_time_ms(runner) + resolution_time_offset_ms;
@@ -186,7 +183,6 @@ pub fn create_test_market_with_resolver(
 
     let msg = CallMessage::CreateMarket {
         question: SafeString::from_str(question).ok().unwrap(),
-        collateral_token,
         resolution_time,
         resolver,
     };

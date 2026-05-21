@@ -32,8 +32,6 @@ fn test_update_data() -> SafeVec<u8, MAX_BYTES_PRICE_UPDATES> {
 fn test_create_market_with_pyth_resolver() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let feed_id = HexHash::new([0xAB; 32]);
     let resolver = Resolver::Pyth {
         feed_id,
@@ -46,7 +44,6 @@ fn test_create_market_with_pyth_resolver() {
         &user,
         resolver.clone(),
         "Will BTC be between $1000 and $2000?",
-        collateral,
         86_400_000,
     );
 
@@ -59,8 +56,6 @@ fn test_create_market_with_pyth_resolver() {
 fn test_create_market_with_pyth_resolver_unbounded() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let resolver = Resolver::Pyth {
         feed_id: HexHash::from([0x01; 32]),
         lower_bound: None,
@@ -72,7 +67,6 @@ fn test_create_market_with_pyth_resolver_unbounded() {
         &user,
         resolver.clone(),
         "Will BTC be under $50k?",
-        collateral,
         86_400_000,
     );
 
@@ -84,14 +78,11 @@ fn test_create_market_with_pyth_resolver_unbounded() {
 fn test_create_market_with_optimistic_resolver() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
         &user,
         Resolver::Optimistic {},
         "Will it snow in July?",
-        collateral,
         86_400_000,
     );
 
@@ -129,8 +120,6 @@ fn store_pyth_price(
 fn test_resolve_pyth_market_price_in_bounds_yes() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     // Create market with bounds that include TEST_PRICE
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
@@ -141,7 +130,6 @@ fn test_resolve_pyth_market_price_in_bounds_yes() {
             upper_bound: Some(TEST_PRICE as u64 + 1),
         },
         "Will price be in range?",
-        collateral,
         5_000,
     );
 
@@ -177,8 +165,6 @@ fn test_resolve_pyth_market_price_in_bounds_yes() {
 fn test_resolve_pyth_market_price_below_lower_bound_no() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     // Lower bound above the actual price
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
@@ -189,7 +175,6 @@ fn test_resolve_pyth_market_price_below_lower_bound_no() {
             upper_bound: None,
         },
         "Will price be above threshold?",
-        collateral,
         5_000,
     );
 
@@ -223,8 +208,6 @@ fn test_resolve_pyth_market_price_below_lower_bound_no() {
 fn test_resolve_pyth_market_price_above_upper_bound_no() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     // Upper bound below the actual price
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
@@ -235,7 +218,6 @@ fn test_resolve_pyth_market_price_above_upper_bound_no() {
             upper_bound: Some(TEST_PRICE as u64 - 100),
         },
         "Will price be below threshold?",
-        collateral,
         5_000,
     );
 
@@ -269,8 +251,6 @@ fn test_resolve_pyth_market_price_above_upper_bound_no() {
 fn test_resolve_pyth_market_feed_not_found() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     // Use a different feed_id that doesn't match the stored data
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
@@ -281,7 +261,6 @@ fn test_resolve_pyth_market_feed_not_found() {
             upper_bound: Some(2000),
         },
         "Will BTC be in range?",
-        collateral,
         5_000,
     );
 
@@ -313,14 +292,11 @@ fn test_resolve_pyth_market_feed_not_found() {
 fn test_resolve_optimistic_market_returns_not_implemented() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
         &user,
         Resolver::Optimistic {},
         "Will it snow in July?",
-        collateral,
         5_000,
     );
 
@@ -356,14 +332,11 @@ fn test_resolve_optimistic_market_returns_not_implemented() {
 fn test_resolve_address_market_with_pyth_data_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain?",
-        collateral,
         5_000,
     );
 
@@ -395,8 +368,6 @@ fn test_resolve_address_market_with_pyth_data_fails() {
 fn test_resolve_pyth_market_with_address_data_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market_with_resolver(
         &mut runner,
         &user,
@@ -406,7 +377,6 @@ fn test_resolve_pyth_market_with_address_data_fails() {
             upper_bound: Some(2000),
         },
         "Will BTC be in range?",
-        collateral,
         5_000,
     );
 

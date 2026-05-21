@@ -9,14 +9,11 @@ fn test_halt_market_by_admin() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -43,14 +40,11 @@ fn test_halt_market_unauthorized_fails() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &admin,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -77,14 +71,11 @@ fn test_resume_market_after_halt() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -127,14 +118,11 @@ fn test_resume_market_unauthorized_fails() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &admin,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -171,14 +159,11 @@ fn test_mint_on_halted_market_fails() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 
@@ -215,14 +200,11 @@ fn test_mint_after_resume_succeeds() {
     let (test_data, mut runner) = setup();
     let admin = test_data.admin;
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &admin,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         86_400_000,
     );
 

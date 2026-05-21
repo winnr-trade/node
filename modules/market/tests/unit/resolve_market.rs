@@ -9,19 +9,16 @@ use sov_test_utils::{AsUser, TransactionTestCase};
 fn test_resolve_market_success() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
     // Advance time past the resolution time (~280ms per slot, need ~500 for 100s)
-    runner.advance_slots(500);
+    runner.advance_slots(600);
 
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Yes);
 
@@ -35,18 +32,15 @@ fn test_resolve_market_success() {
 fn test_resolve_market_outcome_no() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will BTC hit 200k?",
-        collateral,
         100_000,
     );
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
 
     resolve_market_helper(&mut runner, &user, market_id, Outcome::No);
 
@@ -59,18 +53,15 @@ fn test_resolve_market_outcome_no() {
 fn test_resolve_market_outcome_invalid() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Ambiguous question",
-        collateral,
         100_000,
     );
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
 
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Invalid);
 
@@ -84,18 +75,15 @@ fn test_resolve_market_wrong_resolver_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
     let admin = test_data.admin;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
 
     // Try to resolve with admin (not the designated resolver)
     let resolve_msg = CallMessage::ResolveMarket {
@@ -125,14 +113,11 @@ fn test_resolve_market_wrong_resolver_fails() {
 fn test_resolve_market_before_resolution_time_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain next year?",
-        collateral,
         86_400_000 * 365,
     );
 
@@ -187,18 +172,15 @@ fn test_resolve_nonexistent_market_fails() {
 fn test_resolve_market_twice_fails() {
     let (test_data, mut runner) = setup();
     let user = test_data.user;
-    let collateral = test_data.collateral_token_id;
-
     let (market_id, _) = create_test_market(
         &mut runner,
         &user,
         &user,
         "Will it rain tomorrow?",
-        collateral,
         100_000,
     );
 
-    runner.advance_slots(500);
+    runner.advance_slots(600);
 
     // First resolution should succeed
     resolve_market_helper(&mut runner, &user, market_id, Outcome::Yes);
