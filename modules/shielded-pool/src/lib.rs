@@ -6,8 +6,9 @@
 //! require proof of a valid commitment and consume a nullifier to prevent
 //! double-spending.
 //!
-//! **Status: Early scaffold — several components are placeholder implementations.**
-//! See inline `TODO`/`FIXME` comments for known gaps.
+//! The primary use case for this module is to serve as the private collateral
+//! management layer for the markets, allowing users to shield their
+//! collateral and maintain privacy over their positions.
 
 mod call;
 mod error;

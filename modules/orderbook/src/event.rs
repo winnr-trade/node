@@ -7,6 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
+use sov_modules_api::HexHash;
 
 /// Events emitted by the orderbook module.
 #[derive(
@@ -75,6 +76,21 @@ pub enum Event {
         best_ask: Option<Price>,
         /// Block timestamp in milliseconds when the book state changed.
         timestamp: u64,
+    },
+
+    /// Emitted when a stealth order is placed, carrying the encrypted payload
+    /// needed to recover the stealth address private key off-chain.
+    ///
+    /// The `commitment` field links this event to the shielded pool's `Note`
+    /// event for the same transaction.
+    StealthOrderMemo {
+        /// Shielded-pool commitment from the collateral withdrawal —
+        /// correlates with `ShieldedPoolEvent::Note.commitment`.
+        commitment: HexHash,
+        /// The stealth address that owns the placed order.
+        stealth_address: String,
+        /// Encrypted payload for stealth address key recovery.
+        memo: Vec<u8>,
     },
 }
 

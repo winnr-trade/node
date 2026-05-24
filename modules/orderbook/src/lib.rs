@@ -178,6 +178,8 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 price,
                 quantity,
                 order_type,
+                note_memo,
+                stealth_memo,
             } => self.place_order_stealth(
                 OrderRequest {
                     market_id,
@@ -191,6 +193,8 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 root,
                 commitment,
                 nullifier,
+                note_memo,
+                stealth_memo,
                 &stealth_address,
                 ctx,
                 state,

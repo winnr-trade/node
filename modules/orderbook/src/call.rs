@@ -5,8 +5,11 @@ use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size}
 use shielded_pool::ProofBytes;
 use sov_modules_api::{
     macros::{serialize, UniversalWallet},
-    HexHash, Spec,
+    HexHash, SafeVec, Spec,
 };
+
+/// Maximum byte length of a stealth-order memo.
+pub(crate) const MAX_MEMO_BYTES: usize = 128;
 
 /// Call messages for the orderbook module.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, UniversalWallet)]
@@ -54,6 +57,12 @@ pub enum CallMessage<S: Spec> {
         quantity: Size,
         /// Order type.
         order_type: OrderType,
+        /// Forwarded verbatim to `withdraw_to` and surfaced in the shielded
+        /// pool's `Note` event.
+        note_memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        /// Surfaced in the orderbook's `StealthOrderMemo` event alongside the
+        /// `commitment`, which links it to the corresponding `Note` event.
+        stealth_memo: SafeVec<u8, MAX_MEMO_BYTES>,
     },
 
     /// Cancel an existing order.

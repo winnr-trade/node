@@ -1,3 +1,4 @@
+use crate::call::MAX_MEMO_BYTES;
 use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
@@ -31,6 +32,8 @@ impl<S: Spec> OrderbookModule<S> {
         root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
+        note_memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        stealth_memo: SafeVec<u8, MAX_MEMO_BYTES>,
         stealth_address: &S::Address,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
@@ -62,12 +65,22 @@ impl<S: Spec> OrderbookModule<S> {
                 commitment,
                 nullifier,
                 required_collateral,
-                Default::default(),
+                note_memo,
                 stealth_address,
                 ctx,
                 state,
             )
             .into_orderbook_err()?;
+
+        self.emit_event(
+            state,
+            Event::StealthOrderMemo {
+                commitment,
+                stealth_address: stealth_address.to_string(),
+                memo: stealth_memo.as_ref().to_vec(),
+            },
+        );
+
         self.place_order(order_request, stealth_address, state)
     }
 
