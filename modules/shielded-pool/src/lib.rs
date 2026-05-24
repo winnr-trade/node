@@ -404,12 +404,4 @@ impl<S: Spec> ShieldedPoolModule<S> {
             Err(ShieldedPoolError::InvalidProof)
         }
     }
-
-    fn calculate_commitment(amount: Amount, owner: HexHash, salt: HexHash) -> HexHash {
-        let mut amount_bytes = [0u8; 32];
-        amount_bytes[16..].copy_from_slice(&amount.0.to_be_bytes());
-        let h = poseidon_t4(&owner.0, &amount_bytes, &salt.0);
-
-        HexHash::new(h)
-    }
 }
