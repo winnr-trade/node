@@ -62,6 +62,7 @@ impl<S: Spec> OrderbookModule<S> {
                 commitment,
                 nullifier,
                 required_collateral,
+                Default::default(),
                 stealth_address,
                 ctx,
                 state,

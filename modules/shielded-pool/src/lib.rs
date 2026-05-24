@@ -20,17 +20,17 @@ pub mod verifier;
 
 pub use call::CallMessage;
 pub use error::ShieldedPoolError;
-pub use event::ShieldedPoolEvent;
+pub use event::{NoteKind, ShieldedPoolEvent};
 pub use genesis::ShieldedPoolGenesisConfig;
 pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
 pub use types::{ProofBytes, PublicInputs};
 
-use crate::{error::IntoShieldedPoolError, hash::poseidon_t4};
+use crate::{call::MAX_MEMO_BYTES, error::IntoShieldedPoolError, hash::poseidon_t4};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    self, Context, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap,
-    StateValue, TxState,
+    self, Context, EventEmitter, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, SafeVec,
+    Spec, StateMap, StateValue, TxState,
 };
 
 #[derive(Clone, ModuleInfo, ModuleRestApi)]
@@ -100,7 +100,8 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
-            } => self.create_account(proof, root, amount, commitment, nullifier, ctx, state),
+                memo,
+            } => self.create_account(proof, root, amount, commitment, nullifier, memo, ctx, state),
 
             CallMessage::Deposit {
                 proof,
@@ -108,7 +109,8 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
-            } => self.deposit(proof, root, amount, commitment, nullifier, ctx, state),
+                memo,
+            } => self.deposit(proof, root, amount, commitment, nullifier, memo, ctx, state),
 
             CallMessage::Withdraw {
                 proof,
@@ -116,7 +118,8 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
-            } => self.withdraw(proof, root, amount, commitment, nullifier, ctx, state),
+                memo,
+            } => self.withdraw(proof, root, amount, commitment, nullifier, memo, ctx, state),
         }
     }
 }
@@ -140,6 +143,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -165,7 +169,15 @@ impl<S: Spec> ShieldedPoolModule<S> {
         }
 
         self.transact(
-            proof, root, amount, commitment, nullifier, true, true, ctx, state,
+            proof,
+            root,
+            amount,
+            commitment,
+            nullifier,
+            NoteKind::CreateAccount,
+            memo,
+            ctx,
+            state,
         )?;
 
         self.has_shielded
@@ -182,6 +194,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -196,7 +209,15 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .into_shielded_pool_err()?;
 
         self.transact(
-            proof, root, amount, commitment, nullifier, true, false, ctx, state,
+            proof,
+            root,
+            amount,
+            commitment,
+            nullifier,
+            NoteKind::Deposit,
+            memo,
+            ctx,
+            state,
         )?;
 
         Ok(())
@@ -209,6 +230,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -218,6 +240,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
             commitment,
             nullifier,
             amount,
+            memo,
             ctx.sender(),
             ctx,
             state,
@@ -231,12 +254,21 @@ impl<S: Spec> ShieldedPoolModule<S> {
         commitment: HexHash,
         nullifier: HexHash,
         amount: Amount,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         to: impl Payable<S>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
         self.transact(
-            proof, root, amount, commitment, nullifier, false, false, ctx, state,
+            proof,
+            root,
+            amount,
+            commitment,
+            nullifier,
+            NoteKind::Withdraw,
+            memo,
+            ctx,
+            state,
         )?;
 
         let token_id = self.get_token_id(state)?;
@@ -254,8 +286,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
-        is_deposit: bool,
-        is_new_account: bool,
+        kind: NoteKind,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         _ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -293,8 +325,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
             amount,
             nullifier,
             commitment,
-            is_new_account,
-            is_deposit,
+            matches!(kind, NoteKind::CreateAccount),
+            matches!(kind, NoteKind::CreateAccount | NoteKind::Deposit),
         )?;
 
         self.nullifiers
@@ -307,6 +339,17 @@ impl<S: Spec> ShieldedPoolModule<S> {
         tree.insert(commitment)
             .map_err(|e| ShieldedPoolError::Any(anyhow::anyhow!("{}", e)))?;
         self.tree.set(&tree, state).into_shielded_pool_err()?;
+
+        self.emit_event(
+            state,
+            ShieldedPoolEvent::Note {
+                kind,
+                commitment,
+                nullifier,
+                amount: amount.0,
+                memo: memo.as_ref().to_vec(),
+            },
+        );
 
         Ok(())
     }

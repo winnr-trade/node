@@ -6,6 +6,8 @@ use sov_modules_api::{
     HexHash, SafeVec,
 };
 
+pub(crate) const MAX_MEMO_BYTES: usize = 128;
+
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, UniversalWallet)]
 #[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
@@ -17,16 +19,17 @@ pub enum CallMessage {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
     },
 
     /// Deposit collateral into the shielded pool.
     Deposit {
         proof: ProofBytes,
-        /// Merkle root at the time the proof was generated.
         root: HexHash,
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
     },
 
     /// Withdraw collateral from the shielded pool.
@@ -37,5 +40,6 @@ pub enum CallMessage {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
     },
 }
