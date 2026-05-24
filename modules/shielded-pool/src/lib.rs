@@ -25,7 +25,7 @@ pub use genesis::ShieldedPoolGenesisConfig;
 pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
 pub use types::{ProofBytes, PublicInputs};
 
-use crate::{call::MAX_MEMO_BYTES, error::IntoShieldedPoolError, hash::poseidon_t4};
+use crate::{call::MAX_MEMO_BYTES, error::IntoShieldedPoolError};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{
