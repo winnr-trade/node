@@ -1,6 +1,7 @@
 //! Events emitted by the shielded pool module.
 
 use schemars::JsonSchema;
+use sov_bank::Amount;
 use sov_modules_api::{macros::serialize, HexHash};
 
 /// Discriminates what kind of shielded-pool transaction created this note.
@@ -20,12 +21,13 @@ pub enum NoteKind {
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
-pub enum ShieldedPoolEvent {
+pub enum Event {
     Note {
         kind: NoteKind,
+        amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
-        amount: u128,
+        leaf_index: u64,
         memo: Vec<u8>,
     },
 }

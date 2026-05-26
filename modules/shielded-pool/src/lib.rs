@@ -21,7 +21,7 @@ pub mod verifier;
 
 pub use call::CallMessage;
 pub use error::ShieldedPoolError;
-pub use event::{NoteKind, ShieldedPoolEvent};
+pub use event::{Event, NoteKind};
 pub use genesis::ShieldedPoolGenesisConfig;
 pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
 pub use types::{ProofBytes, PublicInputs};
@@ -44,7 +44,7 @@ pub struct ShieldedPoolModule<S: Spec> {
     pub admin: StateValue<S::Address>,
 
     /// Tracks whether an address has made its initial shielded deposit.
-    /// Used by `ShieldFirst` to enforce one-time bootstrapping per address.
+    /// Used by `CreateAccount` to enforce one-time bootstrapping per address.
     #[state]
     pub has_shielded: StateMap<S::Address, bool>,
 
@@ -76,7 +76,7 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
     type Spec = S;
     type Config = ShieldedPoolGenesisConfig<S>;
     type CallMessage = CallMessage;
-    type Event = ShieldedPoolEvent;
+    type Event = Event;
     type Error = ShieldedPoolError;
 
     fn genesis(
@@ -337,17 +337,19 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .set(&commitment, &true, state)
             .into_shielded_pool_err()?;
 
-        tree.insert(commitment)
+        let leaf_index = tree
+            .insert(commitment)
             .map_err(|e| ShieldedPoolError::Any(anyhow::anyhow!("{}", e)))?;
         self.tree.set(&tree, state).into_shielded_pool_err()?;
 
         self.emit_event(
             state,
-            ShieldedPoolEvent::Note {
+            Event::Note {
                 kind,
                 commitment,
                 nullifier,
-                amount: amount.0,
+                amount,
+                leaf_index,
                 memo: memo.as_ref().to_vec(),
             },
         );
