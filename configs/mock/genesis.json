@@ -87,7 +87,7 @@
       "max_question_length": 100,
       "min_market_duration": 60
     },
-    "collateral_token_id": "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"
+    "collateral_token_id": "token_1egfu37gfmcje46rnzws545ts0rytjfs9j62mf5c3gg6wfsd0zgrqf48etq"
   },
   "orderbook": {
     "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
@@ -100,7 +100,7 @@
   },
   "shielded_pool": {
     "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
-    "token_id": "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"
+    "token_id": "token_1egfu37gfmcje46rnzws545ts0rytjfs9j62mf5c3gg6wfsd0zgrqf48etq"
   },
   "pyth": {
     "admin": "1RE6BqM5276sUrSsvaBKLwrBATUqKPSFxkagUWwcQg6",
