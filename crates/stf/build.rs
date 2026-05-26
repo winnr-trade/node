@@ -1,6 +1,6 @@
 use sov_address::{EthereumAddress, EvmCryptoSpec};
-use sov_mock_zkvm::MockZkvm;
-use sov_modules_api::configurable_spec::ConfigurableSpec;
+use sov_mock_zkvm::{MockZkvm, MockZkvmCryptoSpec};
+use sov_modules_api::{configurable_spec::ConfigurableSpec, Base58Address};
 use stf_starter_declaration::Runtime;
 
 #[cfg(all(feature = "mock_da", feature = "celestia_da"))]
@@ -51,7 +51,8 @@ type ExecMode = sov_modules_api::execution_mode::Native;
 #[cfg(not(feature = "native"))]
 type ExecMode = sov_modules_api::execution_mode::Zk;
 
-type S = ConfigurableSpec<DaSpec, MockZkvm, MockZkvm, EthereumAddress, ExecMode, EvmCryptoSpec>;
+// type S = ConfigurableSpec<DaSpec, MockZkvm, MockZkvm, EthereumAddress, ExecMode, EvmCryptoSpec>;
+type S = ConfigurableSpec<DaSpec, MockZkvm, MockZkvm, Base58Address, ExecMode, MockZkvmCryptoSpec>;
 
 fn main() -> anyhow::Result<()> {
     sov_build::Options::apply_defaults::<S, Runtime<S>>()
