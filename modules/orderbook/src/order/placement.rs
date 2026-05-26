@@ -42,6 +42,17 @@ impl<S: Spec> OrderbookModule<S> {
             return Err(OrderbookError::StealthOrderMustBeBid);
         }
 
+        if self
+            .used_stealth_addresses
+            .get(stealth_address, state)
+            .into_orderbook_err()?
+            .unwrap_or(false)
+        {
+            return Err(OrderbookError::StealthAddressAlreadyUsed {
+                address: stealth_address.to_string(),
+            });
+        }
+
         let market = self
             .market
             .markets
@@ -81,7 +92,13 @@ impl<S: Spec> OrderbookModule<S> {
             },
         );
 
-        self.place_order(order_request, stealth_address, state)
+        self.place_order(order_request, stealth_address, state)?;
+
+        self.used_stealth_addresses
+            .set(stealth_address, &true, state)
+            .into_orderbook_err()?;
+
+        Ok(())
     }
 
     /// Cancel an order.

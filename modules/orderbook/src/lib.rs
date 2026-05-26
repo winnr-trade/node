@@ -121,6 +121,10 @@ pub struct OrderbookModule<S: Spec> {
     /// Agent Wallet module for resolving delegated trading principals.
     #[module]
     pub agent_wallet: AgentWalletModule<S>,
+
+    /// Tracks stealth addresses that have already been used as order owners.
+    #[state]
+    pub used_stealth_addresses: StateMap<S::Address, bool>,
 }
 
 impl<S: Spec> Module for OrderbookModule<S> {

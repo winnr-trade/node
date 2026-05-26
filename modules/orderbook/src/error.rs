@@ -52,6 +52,9 @@ pub enum OrderbookError {
     #[error("Stealth orders must be Bid (Buy) orders; Ask orders from a stealth address use PlaceOrderNormal")]
     StealthOrderMustBeBid,
 
+    #[error("Stealth address {address} has already been used; stealth addresses are one-time-use")]
+    StealthAddressAlreadyUsed { address: String },
+
     #[error("{0}")]
     #[serde(serialize_with = "serialize_anyhow")]
     Any(#[from] anyhow::Error),
