@@ -342,6 +342,12 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .map_err(|e| ShieldedPoolError::Any(anyhow::anyhow!("{}", e)))?;
         self.tree.set(&tree, state).into_shielded_pool_err()?;
 
+        let timestamp = self
+            .chain_state
+            .get_time(state)
+            .into_shielded_pool_err()?
+            .as_millis() as u64;
+
         self.emit_event(
             state,
             Event::Note {
@@ -350,6 +356,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
                 nullifier,
                 amount,
                 leaf_index,
+                timestamp,
                 memo: memo.as_ref().to_vec(),
             },
         );

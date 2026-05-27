@@ -28,6 +28,7 @@ pub enum Event {
         commitment: HexHash,
         nullifier: HexHash,
         leaf_index: u64,
+        timestamp: u64,
         memo: Vec<u8>,
     },
 }
