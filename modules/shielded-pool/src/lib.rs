@@ -19,6 +19,9 @@ mod tree;
 mod types;
 pub mod verifier;
 
+#[cfg(feature = "native")]
+mod query;
+
 pub use call::CallMessage;
 pub use error::ShieldedPoolError;
 pub use event::{Event, NoteKind};
