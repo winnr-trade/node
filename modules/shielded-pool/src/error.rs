@@ -18,6 +18,15 @@ pub enum ShieldedPoolError {
     #[error("unknown Merkle root: {root:?}")]
     UnknownRoot { root: HexHash },
 
+    #[error("invalid public key: owner address cannot be converted to a public key")]
+    InvalidPublicKey,
+
+    #[error("invalid signature bytes: cannot deserialize signature")]
+    InvalidSignatureBytes,
+
+    #[error("invalid signature: owner did not sign the registration message")]
+    InvalidSignature,
+
     #[error("invalid proof")]
     InvalidProof,
 

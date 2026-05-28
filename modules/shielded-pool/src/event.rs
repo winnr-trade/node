@@ -9,7 +9,7 @@ use sov_modules_api::{macros::serialize, HexHash};
 #[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
 pub enum NoteKind {
-    CreateAccount,
+    RegisterAccount,
     Deposit,
     Withdraw,
 }
