@@ -37,7 +37,9 @@ impl IncrementalMerkleTree {
             current_zero = Self::hash(current_zero, current_zero);
         }
 
-        let roots = vec![zero_value; 1 << depth];
+        // current_zero is now the root of the empty tree; start roots with it
+        // so is_known_root() accepts the initial root before any insertions.
+        let roots = vec![current_zero];
         Self {
             depth,
             zero_value,
@@ -47,7 +49,9 @@ impl IncrementalMerkleTree {
     }
 
     pub fn insert(&mut self, leaf: HexHash) -> Result<u64, &'static str> {
-        let leaf_index = self.roots.len() as u64;
+        // roots starts with one entry (the empty-tree root), so the next leaf
+        // index is roots.len() - 1.
+        let leaf_index = (self.roots.len() as u64).saturating_sub(1);
         if leaf_index >= (1 << self.depth) {
             return Err("Merkle tree is full");
         }

@@ -14,7 +14,7 @@ mod call;
 mod error;
 mod event;
 mod genesis;
-mod hash;
+pub mod hash;
 mod tree;
 mod types;
 pub mod verifier;
@@ -168,9 +168,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
             <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner.as_ref().to_vec())
                 .map_err(|_| ShieldedPoolError::InvalidPublicKey)?;
 
-        let sig =
-            <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
-                .map_err(|_| ShieldedPoolError::InvalidSignatureBytes)?;
+        let sig = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
+            .map_err(|_| ShieldedPoolError::InvalidSignatureBytes)?;
 
         let msg = Self::registration_signing_message(&owner).into_bytes();
         sig.verify(&owner_pub_key, &msg)
@@ -354,8 +353,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
             amount,
             nullifier,
             commitment,
-            matches!(kind, NoteKind::RegisterAccount),
             matches!(kind, NoteKind::RegisterAccount | NoteKind::Deposit),
+            matches!(kind, NoteKind::RegisterAccount),
         )?;
 
         self.nullifiers

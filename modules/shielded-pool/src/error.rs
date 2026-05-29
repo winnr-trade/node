@@ -47,7 +47,10 @@ fn serialize_anyhow<S>(err: &anyhow::Error, serializer: S) -> Result<S::Ok, S::E
 where
     S: serde::Serializer,
 {
-    serializer.serialize_str(&err.to_string())
+    use serde::ser::SerializeMap;
+    let mut map = serializer.serialize_map(Some(1))?;
+    map.serialize_entry("message", &err.to_string())?;
+    map.end()
 }
 
 /// Extension trait to convert any error to ShieldedPoolError
