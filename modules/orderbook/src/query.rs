@@ -1,6 +1,7 @@
 use crate::{MarketSideKey, OrderbookModule, PriceLevelKey};
 use market::MarketId;
 use shared_types::{OrderId, OrderStatus, OrderType, OutcomeSide, Price, Side, Size};
+use sov_bank::Amount;
 use sov_modules_api::prelude::utoipa::openapi::OpenApi;
 use sov_modules_api::prelude::{
     axum::{
@@ -184,6 +185,108 @@ impl<S: Spec> OrderbookModule<S> {
     async fn route_status() -> ApiResult<String> {
         Ok(Json("OK".to_string()))
     }
+
+    /// Simulate a market BUY of `quantity` shares of `outcome` and return the
+    /// total collateral required, along with how much of the quantity is
+    /// fillable from current book depth.
+    ///
+    /// - BUY YES: walks ASK levels cheapest-first; cost per fill = ask_price × qty / BASIS
+    /// - BUY NO:  walks BID levels highest-first; cost per fill = (BASIS − bid_price) × qty / BASIS
+    async fn route_buy_quote(
+        params: Query<BuyQuoteParams>,
+        state: ApiState<S, Self>,
+        mut acc: ApiStateAccessor<S>,
+    ) -> ApiResult<BuyQuoteResponse> {
+        let market_id = MarketId(params.market_id);
+        let quantity = Size(params.quantity);
+
+        let market = state
+            .market
+            .markets
+            .get(&market_id, &mut acc)
+            .unwrap_infallible()
+            .ok_or_else(|| errors::not_found_404("Market", market_id))?;
+
+        let token = market.collateral_token;
+
+        // BUY YES taker matches against ASK side.
+        // BUY NO (canonical Ask) taker matches against BID side.
+        let book_side = match params.outcome {
+            OutcomeSide::Yes => Side::Ask,
+            OutcomeSide::No => Side::Bid,
+        };
+
+        let key = MarketSideKey { market_id, side: book_side };
+        let mut levels = state
+            .price_levels
+            .get(&key, &mut acc)
+            .unwrap_infallible()
+            .unwrap_or_default();
+
+        match book_side {
+            Side::Ask => levels.sort(),
+            Side::Bid => levels.sort_by(|a, b| b.cmp(a)),
+        }
+
+        let mut remaining = quantity;
+        let mut collateral = Amount::ZERO;
+
+        'outer: for price_level in levels {
+            let level_key = PriceLevelKey { market_id, price: price_level };
+            let order_ids = match book_side {
+                Side::Bid => &state.bids,
+                Side::Ask => &state.asks,
+            }
+            .get(&level_key, &mut acc)
+            .unwrap_infallible()
+            .unwrap_or_default();
+
+            for oid in order_ids {
+                if remaining.is_zero() {
+                    break 'outer;
+                }
+
+                let order = match state.orders.get(&oid, &mut acc).unwrap_infallible() {
+                    Some(o) => o,
+                    None => continue,
+                };
+
+                let fill_qty = remaining.min(order.remaining_quantity);
+                let cost = match params.outcome {
+                    OutcomeSide::Yes => price_level.cost(fill_qty, &token),
+                    OutcomeSide::No => price_level.complement().cost(fill_qty, &token),
+                };
+
+                collateral = collateral.saturating_add(cost);
+                remaining = remaining.saturating_sub(fill_qty);
+            }
+        }
+
+        let fillable = quantity.saturating_sub(remaining);
+
+        Ok(Json(BuyQuoteResponse {
+            collateral_required: collateral.0,
+            fillable_quantity: fillable.0,
+            unfillable_quantity: remaining.0,
+        }))
+    }
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+struct BuyQuoteParams {
+    market_id: u64,
+    quantity: u64,
+    outcome: OutcomeSide,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct BuyQuoteResponse {
+    /// Total collateral (in base units) needed for the fillable portion.
+    collateral_required: u128,
+    /// Shares fillable from current book depth.
+    fillable_quantity: u64,
+    /// Shares not fillable (book too thin).
+    unfillable_quantity: u64,
 }
 
 impl<S: Spec> HasCustomRestApi for OrderbookModule<S> {
@@ -194,6 +297,7 @@ impl<S: Spec> HasCustomRestApi for OrderbookModule<S> {
             .route("/status", get(Self::route_status))
             .route("/ws", any(Self::route_ws))
             .route("/user-orders", get(Self::route_user_orders))
+            .route("/buy-quote", get(Self::route_buy_quote))
             .with_state(state.with(self.clone()))
     }
 
