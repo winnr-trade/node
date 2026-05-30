@@ -117,8 +117,12 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
+                owner,
+                signature,
                 memo,
-            } => self.deposit(proof, root, amount, commitment, nullifier, memo, ctx, state),
+            } => self.deposit(
+                proof, root, amount, commitment, nullifier, owner, signature, memo, ctx, state,
+            ),
 
             CallMessage::Withdraw {
                 proof,
@@ -126,8 +130,14 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
+                owner,
+                signature,
+                recipient,
                 memo,
-            } => self.withdraw(proof, root, amount, commitment, nullifier, memo, ctx, state),
+            } => self.withdraw(
+                proof, root, amount, commitment, nullifier, owner, signature, recipient, memo, ctx,
+                state,
+            ),
         }
     }
 }
@@ -144,10 +154,47 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .ok_or_else(|| ShieldedPoolError::Any(anyhow::anyhow!("token_id not initialized")))
     }
 
-    /// Build the canonical human-readable message the owner must sign to
-    /// authorize shielded account registration.
     pub fn registration_signing_message(owner: &S::Address) -> String {
         format!("Winnr Shielded Wallet Registration\nowner: {owner}\nversion: 1")
+    }
+
+    pub fn deposit_signing_message(
+        owner: &S::Address,
+        nullifier: &HexHash,
+        amount: Amount,
+    ) -> String {
+        let nullifier_hex: String = nullifier.0.iter().map(|b| format!("{b:02x}")).collect();
+        format!(
+            "Winnr Shielded Deposit\nowner: {owner}\nnullifier: {nullifier_hex}\namount: {}\nversion: 1",
+            amount.0
+        )
+    }
+
+    pub fn withdrawal_signing_message(
+        owner: &S::Address,
+        recipient: &S::Address,
+        nullifier: &HexHash,
+        amount: Amount,
+    ) -> String {
+        let nullifier_hex: String = nullifier.0.iter().map(|b| format!("{b:02x}")).collect();
+        format!(
+            "Winnr Shielded Withdrawal\nowner: {owner}\nrecipient: {recipient}\nnullifier: {nullifier_hex}\namount: {}\nversion: 1",
+            amount.0
+        )
+    }
+
+    fn verify_owner_signature(
+        owner: &S::Address,
+        signature: &HexString<[u8; 64]>,
+        msg: &[u8],
+    ) -> Result<(), ShieldedPoolError> {
+        let owner_pub_key =
+            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner.as_ref().to_vec())
+                .map_err(|_| ShieldedPoolError::InvalidPublicKey)?;
+        let sig = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
+            .map_err(|_| ShieldedPoolError::InvalidSignatureBytes)?;
+        sig.verify(&owner_pub_key, msg)
+            .map_err(|_| ShieldedPoolError::InvalidSignature)
     }
 
     fn register_account(
@@ -188,7 +235,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         if amount != Amount(0) {
             self.bank
                 .transfer_from(
-                    ctx.sender(),
+                    &owner,
                     self.id.to_payable(),
                     Coins { token_id, amount },
                     state,
@@ -222,14 +269,19 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
         memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
+        let msg = Self::deposit_signing_message(&owner, &nullifier, amount);
+        Self::verify_owner_signature(&owner, &signature, msg.as_bytes())?;
+
         let token_id = self.get_token_id(state)?;
         self.bank
             .transfer_from(
-                ctx.sender(),
+                &owner,
                 self.id.to_payable(),
                 Coins { token_id, amount },
                 state,
@@ -258,20 +310,18 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
+        recipient: S::Address,
         memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
+        let msg = Self::withdrawal_signing_message(&owner, &recipient, &nullifier, amount);
+        Self::verify_owner_signature(&owner, &signature, msg.as_bytes())?;
+
         self.withdraw_to(
-            proof,
-            root,
-            commitment,
-            nullifier,
-            amount,
-            memo,
-            ctx.sender(),
-            ctx,
-            state,
+            proof, root, commitment, nullifier, amount, memo, &recipient, ctx, state,
         )
     }
 

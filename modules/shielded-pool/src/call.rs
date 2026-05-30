@@ -31,7 +31,13 @@ pub enum CallMessage<S: Spec> {
     },
 
     /// Deposit collateral into the shielded pool.
+    ///
+    /// `owner` is the address whose tokens are transferred; `signature` is an
+    /// ed25519 signature over the canonical deposit message, allowing a relayer
+    /// to submit the transaction without holding the user's private key.
     Deposit {
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
         proof: ProofBytes,
         root: HexHash,
         amount: Amount,
@@ -41,7 +47,14 @@ pub enum CallMessage<S: Spec> {
     },
 
     /// Withdraw collateral from the shielded pool.
+    ///
+    /// `owner` proves knowledge of the shielded note; `recipient` is the address
+    /// that receives the tokens; `signature` covers both, preventing a relayer
+    /// from redirecting funds.
     Withdraw {
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
+        recipient: S::Address,
         proof: ProofBytes,
         /// Merkle root at the time the proof was generated.
         root: HexHash,
