@@ -83,12 +83,14 @@ impl<S: Spec> OrderbookModule<S> {
             )
             .into_orderbook_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::StealthOrderMemo {
                 commitment,
                 stealth_address: stealth_address.to_string(),
                 memo: stealth_memo.as_ref().to_vec(),
+                timestamp,
             },
         );
 
@@ -184,12 +186,14 @@ impl<S: Spec> OrderbookModule<S> {
             .set(&order_id, &order, state)
             .into_orderbook_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::OrderCancelled {
                 order_id,
                 reason: CancelReason::UserRequested,
                 unfilled_quantity: unfilled,
+                timestamp,
             },
         );
 
@@ -416,6 +420,7 @@ impl<S: Spec> OrderbookModule<S> {
         }
 
         // Emit order placed event
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::OrderPlaced {
@@ -428,6 +433,7 @@ impl<S: Spec> OrderbookModule<S> {
                 quantity,
                 order_type,
                 owner: sender.to_string(),
+                timestamp,
             },
         );
 
@@ -447,6 +453,7 @@ impl<S: Spec> OrderbookModule<S> {
                     filled_quantity: match_result.total_quantity_filled,
                     remaining_quantity: match_result.remaining_quantity,
                     average_price: avg_price,
+                    timestamp,
                 },
             );
         }

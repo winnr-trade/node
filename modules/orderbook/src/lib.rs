@@ -127,6 +127,16 @@ pub struct OrderbookModule<S: Spec> {
     pub used_stealth_addresses: StateMap<S::Address, bool>,
 }
 
+impl<S: Spec> OrderbookModule<S> {
+    pub(crate) fn current_time_ms(
+        &self,
+        state: &mut impl TxState<S>,
+    ) -> Result<u64, OrderbookError> {
+        use crate::error::IntoOrderbookError;
+        Ok(self.chain_state.get_time(state).into_orderbook_err()?.as_millis() as u64)
+    }
+}
+
 impl<S: Spec> Module for OrderbookModule<S> {
     type Spec = S;
     type Config = OrderbookGenesisConfig;

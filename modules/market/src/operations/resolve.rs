@@ -86,6 +86,7 @@ impl<S: Spec> MarketModule<S> {
                 market_id,
                 outcome,
                 resolver: context.sender().to_string(),
+                timestamp: current_time,
             },
         );
 

@@ -97,6 +97,7 @@ impl<S: Spec> MarketModule<S> {
             "Winnings claimed"
         );
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::WinningsClaimed {
@@ -104,6 +105,7 @@ impl<S: Spec> MarketModule<S> {
                 user: ctx.sender().to_string(),
                 winning_shares,
                 payout: payout_amount,
+                timestamp,
             },
         );
 

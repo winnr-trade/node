@@ -66,6 +66,7 @@ impl<S: Spec> MarketModule<S> {
 
         if let TokenHolder::User(user_address) = to {
             self.add_user_active_market(user_address, market_id, state)?;
+            let timestamp = self.current_time_ms(state)?;
             self.emit_event(
                 state,
                 Event::PositionUpdated {
@@ -76,6 +77,7 @@ impl<S: Spec> MarketModule<S> {
                     cost_yes_added: cost_yes,
                     cost_no_added: cost_no,
                     update_source: reason,
+                    timestamp,
                 },
             );
         }
@@ -141,6 +143,7 @@ impl<S: Spec> MarketModule<S> {
                 .into_market_err()?;
             if let TokenHolder::User(user_address) = from {
                 self.remove_user_active_market(user_address, market_id, state)?;
+                let timestamp = self.current_time_ms(state)?;
                 self.emit_event(
                     state,
                     Event::PositionUpdated {
@@ -151,6 +154,7 @@ impl<S: Spec> MarketModule<S> {
                         cost_yes_added: Amount::ZERO,
                         cost_no_added: Amount::ZERO,
                         update_source: reason,
+                        timestamp,
                     },
                 );
             }
@@ -160,6 +164,7 @@ impl<S: Spec> MarketModule<S> {
                 .into_market_err()?;
             if let TokenHolder::User(user_address) = from {
                 self.add_user_active_market(user_address, market_id, state)?;
+                let timestamp = self.current_time_ms(state)?;
                 self.emit_event(
                     state,
                     Event::PositionUpdated {
@@ -170,6 +175,7 @@ impl<S: Spec> MarketModule<S> {
                         cost_yes_added: Amount::ZERO,
                         cost_no_added: Amount::ZERO,
                         update_source: reason,
+                        timestamp,
                     },
                 );
             }

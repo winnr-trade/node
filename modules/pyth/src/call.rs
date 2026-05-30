@@ -45,6 +45,7 @@ impl<S: Spec> PythModule<S> {
 
         // @todo - verify the VAA signatures using the guardian set
         let Proof::WormholeMerkle { vaa: _, updates } = res.proof;
+        let timestamp = self.current_time_ms(state)?;
 
         for update in updates {
             let msg: Message =
@@ -86,6 +87,7 @@ impl<S: Spec> PythModule<S> {
                     conf: price_update.conf,
                     expo: price_update.expo,
                     publish_time: price_update.publish_time,
+                    timestamp,
                 },
             );
         }
@@ -120,11 +122,13 @@ impl<S: Spec> PythModule<S> {
             .set(&guardian_set, state)
             .into_pyth_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::GuardianSetUpdated {
                 num_keys: keys.len(),
                 expiry,
+                timestamp,
             },
         );
 

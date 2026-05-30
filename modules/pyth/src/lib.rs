@@ -51,6 +51,16 @@ pub struct PythModule<S: Spec> {
     pub chain_state: ChainState<S>,
 }
 
+impl<S: Spec> PythModule<S> {
+    pub(crate) fn current_time_ms(
+        &self,
+        state: &mut impl TxState<S>,
+    ) -> Result<u64, PythError> {
+        use crate::error::IntoPythError;
+        Ok(self.chain_state.get_time(state).into_pyth_err()?.as_millis() as u64)
+    }
+}
+
 impl<S: Spec> Module for PythModule<S> {
     type Spec = S;
     type Config = PythGenesisConfig<S>;

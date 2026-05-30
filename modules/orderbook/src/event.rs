@@ -34,6 +34,7 @@ pub enum Event {
         quantity: Size,
         order_type: OrderType,
         owner: String,
+        timestamp: u64,
     },
 
     /// Order was filled (partially or fully).
@@ -42,6 +43,7 @@ pub enum Event {
         filled_quantity: Size,
         remaining_quantity: Size,
         average_price: u64,
+        timestamp: u64,
     },
 
     /// Order was cancelled.
@@ -49,6 +51,7 @@ pub enum Event {
         order_id: OrderId,
         reason: CancelReason,
         unfilled_quantity: Size,
+        timestamp: u64,
     },
 
     /// Trade executed between counterparties.
@@ -91,6 +94,7 @@ pub enum Event {
         stealth_address: String,
         /// Encrypted payload for stealth address key recovery.
         memo: Vec<u8>,
+        timestamp: u64,
     },
 }
 
