@@ -1,6 +1,8 @@
 //! Events emitted by the shielded pool module.
 
+use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use sov_bank::Amount;
 use sov_modules_api::{macros::serialize, HexHash};
 
@@ -18,9 +20,18 @@ pub enum NoteKind {
 ///
 /// The `memo` field carries the caller-supplied encrypted payload and is the
 /// primary channel through which the recipient can recover note secrets off-chain.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serialize(Borsh, Serde)]
-#[serde(rename_all = "snake_case")]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
     Note {
         kind: NoteKind,

@@ -8,7 +8,7 @@ use sov_modules_api::{
     HexHash, SafeVec, Spec,
 };
 
-/// Maximum byte length of a stealth-order memo.
+/// Maximum byte length of a stealth-order note memo.
 pub(crate) const MAX_MEMO_BYTES: usize = 128;
 
 /// Call messages for the orderbook module.
@@ -60,9 +60,10 @@ pub enum CallMessage<S: Spec> {
         /// Forwarded verbatim to `withdraw_to` and surfaced in the shielded
         /// pool's `Note` event.
         note_memo: SafeVec<u8, MAX_MEMO_BYTES>,
-        /// Surfaced in the orderbook's `StealthOrderMemo` event alongside the
-        /// `commitment`, which links it to the corresponding `Note` event.
-        stealth_memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        /// Computed as hash(view_key, market_id, nonce) where nonce is
+        /// per-market. Indexed in `StealthOrderMemo` to allow the owner to
+        /// discover their positions on a given market by scanning nonces.
+        detection_tag: HexHash,
     },
 
     /// Cancel an existing order.
