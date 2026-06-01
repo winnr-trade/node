@@ -30,12 +30,26 @@ pub enum CallMessage<S: Spec> {
         memo: SafeVec<u8, MAX_MEMO_BYTES>,
     },
 
-    /// Deposit collateral into the shielded pool.
+    /// Deposit collateral into the shielded pool from `ctx.sender()`.
+    ///
+    /// The transaction must be signed by the address holding the collateral
+    /// (e.g. a stealth address). No separate owner signature is required —
+    /// the transaction signature itself is the authorization.
+    Deposit {
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
+        commitment: HexHash,
+        nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
+    },
+
+    /// Deposit collateral into the shielded pool via an owner signature.
     ///
     /// `owner` is the address whose tokens are transferred; `signature` is an
     /// ed25519 signature over the canonical deposit message, allowing a relayer
     /// to submit the transaction without holding the user's private key.
-    Deposit {
+    DepositViaSignature {
         owner: S::Address,
         signature: HexString<[u8; 64]>,
         proof: ProofBytes,
