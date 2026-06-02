@@ -18,6 +18,15 @@ pub enum ShieldedPoolError {
     #[error("unknown Merkle root: {root:?}")]
     UnknownRoot { root: HexHash },
 
+    #[error("invalid public key: owner address cannot be converted to a public key")]
+    InvalidPublicKey,
+
+    #[error("invalid signature bytes: cannot deserialize signature")]
+    InvalidSignatureBytes,
+
+    #[error("invalid signature: owner did not sign the registration message")]
+    InvalidSignature,
+
     #[error("invalid proof")]
     InvalidProof,
 
@@ -38,7 +47,10 @@ fn serialize_anyhow<S>(err: &anyhow::Error, serializer: S) -> Result<S::Ok, S::E
 where
     S: serde::Serializer,
 {
-    serializer.serialize_str(&err.to_string())
+    use serde::ser::SerializeMap;
+    let mut map = serializer.serialize_map(Some(1))?;
+    map.serialize_entry("message", &err.to_string())?;
+    map.end()
 }
 
 /// Extension trait to convert any error to ShieldedPoolError

@@ -121,6 +121,20 @@ pub struct OrderbookModule<S: Spec> {
     /// Agent Wallet module for resolving delegated trading principals.
     #[module]
     pub agent_wallet: AgentWalletModule<S>,
+
+    /// Tracks stealth addresses that have already been used as order owners.
+    #[state]
+    pub used_stealth_addresses: StateMap<S::Address, bool>,
+}
+
+impl<S: Spec> OrderbookModule<S> {
+    pub(crate) fn current_time_ms(
+        &self,
+        state: &mut impl TxState<S>,
+    ) -> Result<u64, OrderbookError> {
+        use crate::error::IntoOrderbookError;
+        Ok(self.chain_state.get_time(state).into_orderbook_err()?.as_millis() as u64)
+    }
 }
 
 impl<S: Spec> Module for OrderbookModule<S> {
@@ -178,6 +192,8 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 price,
                 quantity,
                 order_type,
+                note_memo,
+                detection_tag,
             } => self.place_order_stealth(
                 OrderRequest {
                     market_id,
@@ -191,6 +207,8 @@ impl<S: Spec> Module for OrderbookModule<S> {
                 root,
                 commitment,
                 nullifier,
+                note_memo,
+                detection_tag,
                 &stealth_address,
                 ctx,
                 state,

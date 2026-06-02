@@ -152,11 +152,11 @@ impl<S: Spec> OrderbookModule<S> {
             maker_order.remaining_quantity = maker_order
                 .remaining_quantity
                 .checked_sub(fill.quantity)
-                .ok_or_else(|| {
-                    OrderbookError::Any(anyhow::anyhow!(
+                .ok_or_else(|| OrderbookError::Any {
+                    message: format!(
                         "Underflow in remaining_quantity for order {}",
                         fill.order_id
-                    ))
+                    ),
                 })?;
 
             // If maker order fully filled, remove from book and user orders.

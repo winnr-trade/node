@@ -7,6 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared_types::{MarketId, OrderId, OrderType, OutcomeSide, Price, Side, Size};
+use sov_modules_api::HexHash;
 
 /// Events emitted by the orderbook module.
 #[derive(
@@ -33,6 +34,7 @@ pub enum Event {
         quantity: Size,
         order_type: OrderType,
         owner: String,
+        timestamp: u64,
     },
 
     /// Order was filled (partially or fully).
@@ -41,6 +43,7 @@ pub enum Event {
         filled_quantity: Size,
         remaining_quantity: Size,
         average_price: u64,
+        timestamp: u64,
     },
 
     /// Order was cancelled.
@@ -48,6 +51,7 @@ pub enum Event {
         order_id: OrderId,
         reason: CancelReason,
         unfilled_quantity: Size,
+        timestamp: u64,
     },
 
     /// Trade executed between counterparties.
@@ -74,6 +78,25 @@ pub enum Event {
         best_bid: Option<Price>,
         best_ask: Option<Price>,
         /// Block timestamp in milliseconds when the book state changed.
+        timestamp: u64,
+    },
+
+    /// Emitted when a stealth order is placed, linking the stealth address to
+    /// its detection tag for off-chain position discovery.
+    ///
+    /// The `commitment` field links this event to the shielded pool's `Note`
+    /// event for the same transaction. Indexing on `detection_tag` lets the
+    /// owner find all their stealth addresses on a given market by scanning
+    /// per-market nonces and querying hash(view_key, market_id, nonce).
+    StealthOrderMemo {
+        /// Shielded-pool commitment from the collateral withdrawal —
+        /// correlates with `ShieldedPoolEvent::Note.commitment`.
+        commitment: HexHash,
+        /// The stealth address that owns the placed order.
+        stealth_address: String,
+        /// hash(view_key, market_id, nonce) — per-market nonce allows
+        /// efficient scanning without brute-forcing across all markets.
+        detection_tag: HexHash,
         timestamp: u64,
     },
 }

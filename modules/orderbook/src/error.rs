@@ -52,16 +52,17 @@ pub enum OrderbookError {
     #[error("Stealth orders must be Bid (Buy) orders; Ask orders from a stealth address use PlaceOrderNormal")]
     StealthOrderMustBeBid,
 
-    #[error("{0}")]
-    #[serde(serialize_with = "serialize_anyhow")]
-    Any(#[from] anyhow::Error),
+    #[error("Stealth address {address} has already been used; stealth addresses are one-time-use")]
+    StealthAddressAlreadyUsed { address: String },
+
+    #[error("{message}")]
+    Any { message: String },
 }
 
-fn serialize_anyhow<S>(err: &anyhow::Error, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_str(&err.to_string())
+impl From<anyhow::Error> for OrderbookError {
+    fn from(e: anyhow::Error) -> Self {
+        Self::Any { message: e.to_string() }
+    }
 }
 
 /// Extension trait to convert any error to OrderbookError
@@ -71,7 +72,7 @@ pub trait IntoOrderbookError<T> {
 
 impl<T, E: std::fmt::Display> IntoOrderbookError<T> for Result<T, E> {
     fn into_orderbook_err(self) -> Result<T, OrderbookError> {
-        self.map_err(|e| OrderbookError::Any(anyhow::anyhow!("{}", e)))
+        self.map_err(|e| OrderbookError::Any { message: e.to_string() })
     }
 }
 
@@ -87,23 +88,23 @@ where
     InnerErr: std::fmt::Display,
 {
     fn into_orderbook_err_flat(self) -> Result<T, OrderbookError> {
-        self.map_err(|e| OrderbookError::Any(anyhow::anyhow!("{}", e)))?
-            .map_err(|e| OrderbookError::Any(anyhow::anyhow!("{}", e)))
+        self.map_err(|e| OrderbookError::Any { message: e.to_string() })?
+            .map_err(|e| OrderbookError::Any { message: e.to_string() })
     }
 }
 
 // For Result<Option<T>, Err> - handles get pattern
 impl<T, E: std::fmt::Display> IntoOrderbookErrorFlat<T> for Result<Option<T>, E> {
     fn into_orderbook_err_flat(self) -> Result<T, OrderbookError> {
-        self.map_err(|e| OrderbookError::Any(anyhow::anyhow!("{}", e)))?
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Value not found in state")))
+        self.map_err(|e| OrderbookError::Any { message: e.to_string() })?
+            .ok_or_else(|| OrderbookError::Any { message: "Value not found in state".into() })
     }
 }
 
 // Implement From for StateValueError (handles get_or_err inner error)
 impl<U: sov_modules_api::CompileTimeNamespace> From<StateValueError<U>> for OrderbookError {
     fn from(err: StateValueError<U>) -> Self {
-        OrderbookError::Any(anyhow::anyhow!("{}", err))
+        OrderbookError::Any { message: err.to_string() }
     }
 }
 

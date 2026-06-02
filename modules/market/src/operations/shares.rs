@@ -79,12 +79,14 @@ impl<S: Spec> MarketModule<S> {
             "Shares minted"
         );
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::SharesMinted {
                 market_id,
                 user: owner.to_string(),
                 amount: quantity,
+                timestamp,
             },
         );
 
@@ -165,12 +167,14 @@ impl<S: Spec> MarketModule<S> {
             "Shares redeemed"
         );
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::SharesBurned {
                 market_id,
                 user: owner.to_string(),
                 amount,
+                timestamp,
             },
         );
 
@@ -255,6 +259,7 @@ impl<S: Spec> MarketModule<S> {
             state,
         )?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::SharesTransferred {
@@ -263,6 +268,7 @@ impl<S: Spec> MarketModule<S> {
                 to: to_owner.to_string(),
                 yes_amount: quantity_yes,
                 no_amount: quantity_no,
+                timestamp,
             },
         );
 

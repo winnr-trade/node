@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 use sov_bank::TokenId;
-use sov_modules_api::{GenesisState, Spec};
+use sov_modules_api::{GenesisState, HexHash, Spec};
 use tracing::info;
 
-use crate::ShieldedPoolModule;
+use crate::{IncrementalMerkleTree, ShieldedPoolModule, ZERO_LEAF};
+
+/// Depth of the Merkle tree — must match the ZK circuit (UI: TREE_DEPTH = 32).
+pub const TREE_DEPTH: u8 = 32;
 
 /// Genesis configuration for the shielded pool module.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,9 +27,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
         self.admin.set(&config.admin, state)?;
         self.token_id.set(&config.token_id, state)?;
 
-        // TODO: Initialize the incremental Merkle tree here:
-        //   let tree = IncrementalMerkleTree::new(depth, zero_value);
-        //   self.imt.set(&tree, state)?;
+        let tree = IncrementalMerkleTree::new(TREE_DEPTH, HexHash::from(ZERO_LEAF));
+        self.tree.set(&tree, state)?;
 
         info!(
             admin = %config.admin,

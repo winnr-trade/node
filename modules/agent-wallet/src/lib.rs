@@ -101,6 +101,13 @@ impl<S: Spec> Module for AgentWalletModule<S> {
 // ============================================================================
 
 impl<S: Spec> AgentWalletModule<S> {
+    fn current_time_ms(
+        &self,
+        state: &mut impl TxState<S>,
+    ) -> Result<u64, AgentWalletError> {
+        Ok(self.chain_state.get_time(state).into_agent_wallet_err()?.as_millis() as u64)
+    }
+
     /// Build the canonical human-readable message that must be signed by the
     /// owner for `RegisterAgent`.
     pub fn registration_signing_message(
@@ -172,15 +179,9 @@ impl<S: Spec> AgentWalletModule<S> {
         }
 
         // Validate: expires_at must be 0 (never) or strictly in the future.
-        if expires_at != 0 {
-            let now = self
-                .chain_state
-                .get_time(state)
-                .into_agent_wallet_err()?
-                .as_millis() as u64;
-            if expires_at <= now {
-                return Err(AgentWalletError::InvalidExpiry);
-            }
+        let timestamp = self.current_time_ms(state)?;
+        if expires_at != 0 && expires_at <= timestamp {
+            return Err(AgentWalletError::InvalidExpiry);
         }
 
         let key = OwnerAgentKey {
@@ -211,6 +212,7 @@ impl<S: Spec> AgentWalletModule<S> {
                 agent: agent.to_string(),
                 scopes,
                 expires_at,
+                timestamp,
             },
         );
 
@@ -253,11 +255,13 @@ impl<S: Spec> AgentWalletModule<S> {
             .remove(&agent, state)
             .into_agent_wallet_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::AgentRevoked {
                 owner: owner.to_string(),
                 agent: agent.to_string(),
+                timestamp,
             },
         );
 

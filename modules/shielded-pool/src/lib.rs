@@ -6,31 +6,35 @@
 //! require proof of a valid commitment and consume a nullifier to prevent
 //! double-spending.
 //!
-//! **Status: Early scaffold — several components are placeholder implementations.**
-//! See inline `TODO`/`FIXME` comments for known gaps.
+//! The primary use case for this module is to serve as the private collateral
+//! management layer for the markets, allowing users to shield their
+//! collateral and maintain privacy over their positions.
 
 mod call;
 mod error;
 mod event;
 mod genesis;
-mod hash;
+pub mod hash;
 mod tree;
 mod types;
 pub mod verifier;
 
+#[cfg(feature = "native")]
+mod query;
+
 pub use call::CallMessage;
 pub use error::ShieldedPoolError;
-pub use event::ShieldedPoolEvent;
+pub use event::{Event, NoteKind};
 pub use genesis::ShieldedPoolGenesisConfig;
 pub use tree::{IncrementalMerkleTree, ZERO_LEAF};
 pub use types::{ProofBytes, PublicInputs};
 
-use crate::{error::IntoShieldedPoolError, hash::poseidon_t4};
+use crate::{call::MAX_MEMO_BYTES, error::IntoShieldedPoolError};
 use sov_bank::{Amount, Bank, Coins, IntoPayable, Payable, TokenId};
 use sov_chain_state::ChainState;
 use sov_modules_api::{
-    self, Context, HexHash, Module, ModuleId, ModuleInfo, ModuleRestApi, Spec, StateMap,
-    StateValue, TxState,
+    self, Context, CryptoSpec, EventEmitter, HexHash, HexString, Module, ModuleId, ModuleInfo,
+    ModuleRestApi, SafeVec, Signature, Spec, StateMap, StateValue, TxState,
 };
 
 #[derive(Clone, ModuleInfo, ModuleRestApi)]
@@ -43,7 +47,7 @@ pub struct ShieldedPoolModule<S: Spec> {
     pub admin: StateValue<S::Address>,
 
     /// Tracks whether an address has made its initial shielded deposit.
-    /// Used by `ShieldFirst` to enforce one-time bootstrapping per address.
+    /// Used by `RegisterAccount` to enforce one-time bootstrapping per address.
     #[state]
     pub has_shielded: StateMap<S::Address, bool>,
 
@@ -74,8 +78,8 @@ pub struct ShieldedPoolModule<S: Spec> {
 impl<S: Spec> Module for ShieldedPoolModule<S> {
     type Spec = S;
     type Config = ShieldedPoolGenesisConfig<S>;
-    type CallMessage = CallMessage;
-    type Event = ShieldedPoolEvent;
+    type CallMessage = CallMessage<S>;
+    type Event = Event;
     type Error = ShieldedPoolError;
 
     fn genesis(
@@ -94,13 +98,18 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
         state: &mut impl TxState<Self::Spec>,
     ) -> Result<(), Self::Error> {
         match msg {
-            CallMessage::CreateAccount {
+            CallMessage::RegisterAccount {
                 proof,
                 root,
                 amount,
                 commitment,
                 nullifier,
-            } => self.create_account(proof, root, amount, commitment, nullifier, ctx, state),
+                owner,
+                signature,
+                memo,
+            } => self.register_account(
+                proof, root, amount, commitment, nullifier, owner, signature, memo, ctx, state,
+            ),
 
             CallMessage::Deposit {
                 proof,
@@ -108,7 +117,21 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
-            } => self.deposit(proof, root, amount, commitment, nullifier, ctx, state),
+                memo,
+            } => self.deposit(proof, root, amount, commitment, nullifier, memo, ctx, state),
+
+            CallMessage::DepositViaSignature {
+                proof,
+                root,
+                amount,
+                commitment,
+                nullifier,
+                owner,
+                signature,
+                memo,
+            } => self.deposit_via_signature(
+                proof, root, amount, commitment, nullifier, owner, signature, memo, ctx, state,
+            ),
 
             CallMessage::Withdraw {
                 proof,
@@ -116,7 +139,14 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
-            } => self.withdraw(proof, root, amount, commitment, nullifier, ctx, state),
+                owner,
+                signature,
+                recipient,
+                memo,
+            } => self.withdraw(
+                proof, root, amount, commitment, nullifier, owner, signature, recipient, memo, ctx,
+                state,
+            ),
         }
     }
 }
@@ -133,19 +163,77 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .ok_or_else(|| ShieldedPoolError::Any(anyhow::anyhow!("token_id not initialized")))
     }
 
-    fn create_account(
+    pub fn registration_signing_message(owner: &S::Address) -> String {
+        format!("Winnr Shielded Wallet Registration\nowner: {owner}\nversion: 1")
+    }
+
+    pub fn deposit_signing_message(
+        owner: &S::Address,
+        nullifier: &HexHash,
+        amount: Amount,
+    ) -> String {
+        let nullifier_hex: String = nullifier.0.iter().map(|b| format!("{b:02x}")).collect();
+        format!(
+            "Winnr Shielded Deposit\nowner: {owner}\nnullifier: {nullifier_hex}\namount: {}\nversion: 1",
+            amount.0
+        )
+    }
+
+    pub fn withdrawal_signing_message(
+        owner: &S::Address,
+        recipient: &S::Address,
+        nullifier: &HexHash,
+        amount: Amount,
+    ) -> String {
+        let nullifier_hex: String = nullifier.0.iter().map(|b| format!("{b:02x}")).collect();
+        format!(
+            "Winnr Shielded Withdrawal\nowner: {owner}\nrecipient: {recipient}\nnullifier: {nullifier_hex}\namount: {}\nversion: 1",
+            amount.0
+        )
+    }
+
+    fn verify_owner_signature(
+        owner: &S::Address,
+        signature: &HexString<[u8; 64]>,
+        msg: &[u8],
+    ) -> Result<(), ShieldedPoolError> {
+        let owner_pub_key =
+            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner.as_ref().to_vec())
+                .map_err(|_| ShieldedPoolError::InvalidPublicKey)?;
+        let sig = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
+            .map_err(|_| ShieldedPoolError::InvalidSignatureBytes)?;
+        sig.verify(&owner_pub_key, msg)
+            .map_err(|_| ShieldedPoolError::InvalidSignature)
+    }
+
+    fn register_account(
         &mut self,
         proof: ProofBytes,
         root: HexHash,
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
+        // Verify owner's signature over the canonical registration message.
+        let owner_pub_key =
+            <<S as Spec>::CryptoSpec as CryptoSpec>::PublicKey::try_from(owner.as_ref().to_vec())
+                .map_err(|_| ShieldedPoolError::InvalidPublicKey)?;
+
+        let sig = <<S as Spec>::CryptoSpec as CryptoSpec>::Signature::try_from(signature.as_ref())
+            .map_err(|_| ShieldedPoolError::InvalidSignatureBytes)?;
+
+        let msg = Self::registration_signing_message(&owner).into_bytes();
+        sig.verify(&owner_pub_key, &msg)
+            .map_err(|_| ShieldedPoolError::InvalidSignature)?;
+
         if self
             .has_shielded
-            .get(ctx.sender(), state)
+            .get(&owner, state)
             .into_shielded_pool_err()?
             .unwrap_or(false)
         {
@@ -156,7 +244,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         if amount != Amount(0) {
             self.bank
                 .transfer_from(
-                    ctx.sender(),
+                    &owner,
                     self.id.to_payable(),
                     Coins { token_id, amount },
                     state,
@@ -165,11 +253,19 @@ impl<S: Spec> ShieldedPoolModule<S> {
         }
 
         self.transact(
-            proof, root, amount, commitment, nullifier, true, true, ctx, state,
+            proof,
+            root,
+            amount,
+            commitment,
+            nullifier,
+            NoteKind::RegisterAccount,
+            memo,
+            ctx,
+            state,
         )?;
 
         self.has_shielded
-            .set(ctx.sender(), &true, state)
+            .set(&owner, &true, state)
             .into_shielded_pool_err()?;
 
         Ok(())
@@ -182,6 +278,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -195,11 +292,36 @@ impl<S: Spec> ShieldedPoolModule<S> {
             )
             .into_shielded_pool_err()?;
 
-        self.transact(
-            proof, root, amount, commitment, nullifier, true, false, ctx, state,
-        )?;
+        self.transact(proof, root, amount, commitment, nullifier, NoteKind::Deposit, memo, ctx, state)
+    }
 
-        Ok(())
+    fn deposit_via_signature(
+        &mut self,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
+        commitment: HexHash,
+        nullifier: HexHash,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        ctx: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), ShieldedPoolError> {
+        let msg = Self::deposit_signing_message(&owner, &nullifier, amount);
+        Self::verify_owner_signature(&owner, &signature, msg.as_bytes())?;
+
+        let token_id = self.get_token_id(state)?;
+        self.bank
+            .transfer_from(
+                &owner,
+                self.id.to_payable(),
+                Coins { token_id, amount },
+                state,
+            )
+            .into_shielded_pool_err()?;
+
+        self.transact(proof, root, amount, commitment, nullifier, NoteKind::Deposit, memo, ctx, state)
     }
 
     fn withdraw(
@@ -209,18 +331,18 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        owner: S::Address,
+        signature: HexString<[u8; 64]>,
+        recipient: S::Address,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
+        let msg = Self::withdrawal_signing_message(&owner, &recipient, &nullifier, amount);
+        Self::verify_owner_signature(&owner, &signature, msg.as_bytes())?;
+
         self.withdraw_to(
-            proof,
-            root,
-            commitment,
-            nullifier,
-            amount,
-            ctx.sender(),
-            ctx,
-            state,
+            proof, root, commitment, nullifier, amount, memo, &recipient, ctx, state,
         )
     }
 
@@ -231,12 +353,21 @@ impl<S: Spec> ShieldedPoolModule<S> {
         commitment: HexHash,
         nullifier: HexHash,
         amount: Amount,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         to: impl Payable<S>,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
         self.transact(
-            proof, root, amount, commitment, nullifier, false, false, ctx, state,
+            proof,
+            root,
+            amount,
+            commitment,
+            nullifier,
+            NoteKind::Withdraw,
+            memo,
+            ctx,
+            state,
         )?;
 
         let token_id = self.get_token_id(state)?;
@@ -254,8 +385,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
-        is_deposit: bool,
-        is_new_account: bool,
+        kind: NoteKind,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
         _ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), ShieldedPoolError> {
@@ -293,8 +424,8 @@ impl<S: Spec> ShieldedPoolModule<S> {
             amount,
             nullifier,
             commitment,
-            is_new_account,
-            is_deposit,
+            matches!(kind, NoteKind::RegisterAccount | NoteKind::Deposit),
+            matches!(kind, NoteKind::RegisterAccount),
         )?;
 
         self.nullifiers
@@ -304,9 +435,29 @@ impl<S: Spec> ShieldedPoolModule<S> {
             .set(&commitment, &true, state)
             .into_shielded_pool_err()?;
 
-        tree.insert(commitment)
+        let leaf_index = tree
+            .insert(commitment)
             .map_err(|e| ShieldedPoolError::Any(anyhow::anyhow!("{}", e)))?;
         self.tree.set(&tree, state).into_shielded_pool_err()?;
+
+        let timestamp = self
+            .chain_state
+            .get_time(state)
+            .into_shielded_pool_err()?
+            .as_millis() as u64;
+
+        self.emit_event(
+            state,
+            Event::Note {
+                kind,
+                commitment,
+                nullifier,
+                amount,
+                leaf_index,
+                timestamp,
+                memo: memo.as_ref().to_vec(),
+            },
+        );
 
         Ok(())
     }
@@ -360,13 +511,5 @@ impl<S: Spec> ShieldedPoolModule<S> {
         } else {
             Err(ShieldedPoolError::InvalidProof)
         }
-    }
-
-    fn calculate_commitment(amount: Amount, owner: HexHash, salt: HexHash) -> HexHash {
-        let mut amount_bytes = [0u8; 32];
-        amount_bytes[16..].copy_from_slice(&amount.0.to_be_bytes());
-        let h = poseidon_t4(&owner.0, &amount_bytes, &salt.0);
-
-        HexHash::new(h)
     }
 }

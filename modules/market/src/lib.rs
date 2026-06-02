@@ -91,6 +91,16 @@ pub struct MarketModule<S: Spec> {
     pub pyth: PythModule<S>,
 }
 
+impl<S: Spec> MarketModule<S> {
+    pub(crate) fn current_time_ms(
+        &self,
+        state: &mut impl TxState<S>,
+    ) -> Result<u64, MarketError> {
+        use crate::error::IntoMarketError;
+        Ok(self.chain_state.get_time(state).into_market_err()?.as_millis() as u64)
+    }
+}
+
 impl<S: Spec> Module for MarketModule<S> {
     type Spec = S;
     type Config = MarketGenesisConfig<S>;

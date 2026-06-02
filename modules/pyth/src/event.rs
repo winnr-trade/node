@@ -23,11 +23,13 @@ pub enum Event {
         conf: u64,
         expo: i32,
         publish_time: u64,
+        timestamp: u64,
     },
 
     /// Guardian set was updated.
     GuardianSetUpdated {
         num_keys: usize,
         expiry: u64,
+        timestamp: u64,
     },
 }

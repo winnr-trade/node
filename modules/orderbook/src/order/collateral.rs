@@ -50,7 +50,7 @@ impl<S: Spec> OrderbookModule<S> {
             .unwrap_or_default();
         let new_val = current
             .checked_add(amount)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_collateral")))?;
+            .ok_or_else(|| OrderbookError::Any { message: "Overflow in locked_collateral".into() })?;
 
         self.locked_collateral
             .set(&key, &new_val, state)
@@ -181,12 +181,12 @@ impl<S: Spec> OrderbookModule<S> {
         let new_locked_shares_yes = locked_shares
             .yes
             .checked_add(delta_yes)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_shares")))?;
+            .ok_or_else(|| OrderbookError::Any { message: "Overflow in locked_shares".into() })?;
 
         let new_locked_shares_no = locked_shares
             .no
             .checked_add(delta_no)
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in locked_shares")))?;
+            .ok_or_else(|| OrderbookError::Any { message: "Overflow in locked_shares".into() })?;
 
         locked_shares.yes = new_locked_shares_yes;
         locked_shares.no = new_locked_shares_no;

@@ -1,3 +1,4 @@
+use crate::call::MAX_MEMO_BYTES;
 use crate::error::IntoOrderbookError;
 use crate::event::CancelReason;
 use crate::order::canonical::CanonicalOrder;
@@ -31,12 +32,25 @@ impl<S: Spec> OrderbookModule<S> {
         root: HexHash,
         commitment: HexHash,
         nullifier: HexHash,
+        note_memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        detection_tag: HexHash,
         stealth_address: &S::Address,
         ctx: &Context<S>,
         state: &mut impl TxState<S>,
     ) -> Result<(), OrderbookError> {
         if order_request.side != Side::Bid {
             return Err(OrderbookError::StealthOrderMustBeBid);
+        }
+
+        if self
+            .used_stealth_addresses
+            .get(stealth_address, state)
+            .into_orderbook_err()?
+            .unwrap_or(false)
+        {
+            return Err(OrderbookError::StealthAddressAlreadyUsed {
+                address: stealth_address.to_string(),
+            });
         }
 
         let market = self
@@ -62,12 +76,31 @@ impl<S: Spec> OrderbookModule<S> {
                 commitment,
                 nullifier,
                 required_collateral,
+                note_memo,
                 stealth_address,
                 ctx,
                 state,
             )
             .into_orderbook_err()?;
-        self.place_order(order_request, stealth_address, state)
+
+        let timestamp = self.current_time_ms(state)?;
+        self.emit_event(
+            state,
+            Event::StealthOrderMemo {
+                commitment,
+                stealth_address: stealth_address.to_string(),
+                detection_tag,
+                timestamp,
+            },
+        );
+
+        self.place_order(order_request, stealth_address, state)?;
+
+        self.used_stealth_addresses
+            .set(stealth_address, &true, state)
+            .into_orderbook_err()?;
+
+        Ok(())
     }
 
     /// Cancel an order.
@@ -153,12 +186,14 @@ impl<S: Spec> OrderbookModule<S> {
             .set(&order_id, &order, state)
             .into_orderbook_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::OrderCancelled {
                 order_id,
                 reason: CancelReason::UserRequested,
                 unfilled_quantity: unfilled,
+                timestamp,
             },
         );
 
@@ -385,6 +420,7 @@ impl<S: Spec> OrderbookModule<S> {
         }
 
         // Emit order placed event
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::OrderPlaced {
@@ -397,6 +433,7 @@ impl<S: Spec> OrderbookModule<S> {
                 quantity,
                 order_type,
                 owner: sender.to_string(),
+                timestamp,
             },
         );
 
@@ -416,6 +453,7 @@ impl<S: Spec> OrderbookModule<S> {
                     filled_quantity: match_result.total_quantity_filled,
                     remaining_quantity: match_result.remaining_quantity,
                     average_price: avg_price,
+                    timestamp,
                 },
             );
         }

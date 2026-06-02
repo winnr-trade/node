@@ -38,12 +38,14 @@ impl<S: Spec> MarketModule<S> {
             .set(&market_id, &market, state)
             .into_market_err()?;
 
+        let timestamp = self.current_time_ms(state)?;
         self.emit_event(
             state,
             Event::MarketStatusChanged {
                 market_id,
                 old_status,
                 new_status: market.status(),
+                timestamp,
             },
         );
 

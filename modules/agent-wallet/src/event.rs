@@ -22,11 +22,13 @@ pub enum Event {
         agent: String,
         scopes: u32,
         expires_at: u64,
+        timestamp: u64,
     },
 
     /// An agent wallet delegation was revoked by the owner.
     AgentRevoked {
         owner: String,
         agent: String,
+        timestamp: u64,
     },
 }

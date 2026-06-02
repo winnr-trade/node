@@ -91,6 +91,7 @@ impl<S: Spec> MarketModule<S> {
                 collateral_token,
                 resolution_time,
                 resolver: resolver.to_string(),
+                timestamp: current_time,
             },
         );
 

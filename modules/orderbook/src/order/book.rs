@@ -153,27 +153,26 @@ impl<S: Spec> OrderbookModule<S> {
         let scale = 10u128.pow(collateral_token.get_decimals() as u32);
         let expected_total_cost = Amount::from(qty.0)
             .checked_mul(Amount(scale))
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
+            .ok_or_else(|| OrderbookError::Any { message: "Overflow in qty scaling".into() })?;
 
         // Split total cost according to execution price: buyer pays according to fill price
         // and seller pays complement.
         let buyer_cost = fill.price.cost(qty, collateral_token);
         let seller_cost = expected_total_cost.checked_sub(buyer_cost).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Underflow in MintPair collateral split"))
+            OrderbookError::Any { message: "Underflow in MintPair collateral split".into() }
         })?;
         let total_cost = buyer_cost.checked_add(seller_cost).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in MintPair collateral split"))
+            OrderbookError::Any { message: "Overflow in MintPair collateral split".into() }
         })?;
 
         // Sanity check that the split costs sum to the expected total cost for the pair.
         if total_cost != expected_total_cost {
-            return Err(OrderbookError::Any(anyhow::anyhow!(
-                "MintPair collateral split mismatch: buyer={} seller={} total={} expected={}",
-                buyer_cost,
-                seller_cost,
-                total_cost,
-                expected_total_cost
-            )));
+            return Err(OrderbookError::Any {
+                message: format!(
+                    "MintPair collateral split mismatch: buyer={} seller={} total={} expected={}",
+                    buyer_cost, seller_cost, total_cost, expected_total_cost
+                ),
+            });
         }
 
         self.unlock_collateral_to(
@@ -349,7 +348,7 @@ impl<S: Spec> OrderbookModule<S> {
         let scale = 10u128.pow(token.get_decimals() as u32);
         let expected_total_payout = Amount::from(qty.0)
             .checked_mul(Amount(scale))
-            .ok_or_else(|| OrderbookError::Any(anyhow::anyhow!("Overflow in qty scaling")))?;
+            .ok_or_else(|| OrderbookError::Any { message: "Overflow in qty scaling".into() })?;
 
         // Unreserve shares from both sides (no recipient — shares stay with owners until transfer).
         self.unlock_shares_to(
@@ -410,19 +409,18 @@ impl<S: Spec> OrderbookModule<S> {
         let no_payout = expected_total_payout
             .checked_sub(yes_payout)
             .ok_or_else(|| {
-                OrderbookError::Any(anyhow::anyhow!("Underflow in MergePair collateral split"))
+                OrderbookError::Any { message: "Underflow in MergePair collateral split".into() }
             })?;
         let total_payout = yes_payout.checked_add(no_payout).ok_or_else(|| {
-            OrderbookError::Any(anyhow::anyhow!("Overflow in MergePair collateral split"))
+            OrderbookError::Any { message: "Overflow in MergePair collateral split".into() }
         })?;
         if total_payout != expected_total_payout {
-            return Err(OrderbookError::Any(anyhow::anyhow!(
-                "MergePair collateral split mismatch: yes={} no={} total={} expected={}",
-                yes_payout,
-                no_payout,
-                total_payout,
-                expected_total_payout
-            )));
+            return Err(OrderbookError::Any {
+                message: format!(
+                    "MergePair collateral split mismatch: yes={} no={} total={} expected={}",
+                    yes_payout, no_payout, total_payout, expected_total_payout
+                ),
+            });
         }
 
         self.bank

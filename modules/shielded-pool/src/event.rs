@@ -1,18 +1,45 @@
 //! Events emitted by the shielded pool module.
-//!
-//! **Note:** Event fields should be carefully chosen to avoid leaking private
-//! information. In a production shielded pool, events would typically only
-//! contain commitments and nullifiers — not user addresses or amounts.
 
+use borsh::{BorshDeserialize, BorshSerialize};
 use schemars::JsonSchema;
-use sov_modules_api::macros::serialize;
+use serde::{Deserialize, Serialize};
+use sov_bank::Amount;
+use sov_modules_api::{macros::serialize, HexHash};
 
-// TODO: Revise event fields for privacy — emitting user + amount defeats
-// the purpose of a shielded pool. Consider emitting only commitment hashes.
+/// Discriminates what kind of shielded-pool transaction created this note.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serialize(Borsh, Serde)]
 #[serde(rename_all = "snake_case")]
-pub enum ShieldedPoolEvent {
-    Deposit { user: String, amount: u64 },
-    Withdrawal { user: String, amount: u64 },
+pub enum NoteKind {
+    RegisterAccount,
+    Deposit,
+    Withdraw,
+}
+
+/// Emitted by every shielded-pool transaction that inserts a new note into the tree.
+///
+/// The `memo` field carries the caller-supplied encrypted payload and is the
+/// primary channel through which the recipient can recover note secrets off-chain.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Event {
+    Note {
+        kind: NoteKind,
+        amount: Amount,
+        commitment: HexHash,
+        nullifier: HexHash,
+        leaf_index: u64,
+        timestamp: u64,
+        memo: Vec<u8>,
+    },
 }

@@ -53,6 +53,7 @@ pub enum Event {
         collateral_token: TokenId,
         resolution_time: u64,
         resolver: String,
+        timestamp: u64,
     },
 
     /// Market status was changed.
@@ -60,6 +61,7 @@ pub enum Event {
         market_id: MarketId,
         old_status: MarketStatus,
         new_status: MarketStatus,
+        timestamp: u64,
     },
 
     /// Shares were minted.
@@ -68,6 +70,7 @@ pub enum Event {
         market_id: MarketId,
         user: String,
         amount: Size,
+        timestamp: u64,
     },
 
     /// Shares were burned.
@@ -76,6 +79,7 @@ pub enum Event {
         market_id: MarketId,
         user: String,
         amount: Size,
+        timestamp: u64,
     },
 
     /// Shares were transferred between holders.
@@ -85,6 +89,7 @@ pub enum Event {
         to: String,
         yes_amount: Size,
         no_amount: Size,
+        timestamp: u64,
     },
 
     /// Market was resolved.
@@ -92,6 +97,7 @@ pub enum Event {
         market_id: MarketId,
         outcome: Outcome,
         resolver: String,
+        timestamp: u64,
     },
 
     /// Winnings were claimed.
@@ -100,6 +106,7 @@ pub enum Event {
         user: String,
         winning_shares: Size,
         payout: Amount,
+        timestamp: u64,
     },
 
     /// A user's position was updated.
@@ -119,5 +126,6 @@ pub enum Event {
         /// Collateral cost for NO shares acquired in this event (0 for disposals).
         cost_no_added: Amount,
         update_source: PositionUpdateSource,
+        timestamp: u64,
     },
 }
