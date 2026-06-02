@@ -117,10 +117,19 @@ impl<S: Spec> Module for ShieldedPoolModule<S> {
                 amount,
                 commitment,
                 nullifier,
+                memo,
+            } => self.deposit(proof, root, amount, commitment, nullifier, memo, ctx, state),
+
+            CallMessage::DepositViaSignature {
+                proof,
+                root,
+                amount,
+                commitment,
+                nullifier,
                 owner,
                 signature,
                 memo,
-            } => self.deposit(
+            } => self.deposit_via_signature(
                 proof, root, amount, commitment, nullifier, owner, signature, memo, ctx, state,
             ),
 
@@ -269,6 +278,30 @@ impl<S: Spec> ShieldedPoolModule<S> {
         amount: Amount,
         commitment: HexHash,
         nullifier: HexHash,
+        memo: SafeVec<u8, MAX_MEMO_BYTES>,
+        ctx: &Context<S>,
+        state: &mut impl TxState<S>,
+    ) -> Result<(), ShieldedPoolError> {
+        let token_id = self.get_token_id(state)?;
+        self.bank
+            .transfer_from(
+                ctx.sender(),
+                self.id.to_payable(),
+                Coins { token_id, amount },
+                state,
+            )
+            .into_shielded_pool_err()?;
+
+        self.transact(proof, root, amount, commitment, nullifier, NoteKind::Deposit, memo, ctx, state)
+    }
+
+    fn deposit_via_signature(
+        &mut self,
+        proof: ProofBytes,
+        root: HexHash,
+        amount: Amount,
+        commitment: HexHash,
+        nullifier: HexHash,
         owner: S::Address,
         signature: HexString<[u8; 64]>,
         memo: SafeVec<u8, MAX_MEMO_BYTES>,
@@ -288,19 +321,7 @@ impl<S: Spec> ShieldedPoolModule<S> {
             )
             .into_shielded_pool_err()?;
 
-        self.transact(
-            proof,
-            root,
-            amount,
-            commitment,
-            nullifier,
-            NoteKind::Deposit,
-            memo,
-            ctx,
-            state,
-        )?;
-
-        Ok(())
+        self.transact(proof, root, amount, commitment, nullifier, NoteKind::Deposit, memo, ctx, state)
     }
 
     fn withdraw(
