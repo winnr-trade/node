@@ -1,15 +1,14 @@
-# Overview
+# Winnr
 
+## Overview
 This repository is the execution environment for Winnr, an information market infrastructure comprising:
 
-- **Winnr Markets**: a prediction market platform
-- **Winnr Oracle**: an optimistic oracle
+Winnr is a prediction market app-specific rollup with distinctive features like:
 
-This repository provides a starting point for building rollups with the Sovereign SDK.
-
-It includes everything you need to create a rollup with customizable modules, REST API for state queries, TypeScript SDK for submitting transactions, WebSocket endpoints to subscribe to transactions and events, built-in token management, and much more.
-
-**Note:** The Sovereign SDK is provided under a revenue share agreement for commercial applications. See the [LICENSE](/LICENSE.md) file for more details.
+- **CLOB-based**: Real price discovery, tight spreads, and the proven execution model of serious DEXes.
+- **High Performace**: Extremely fast and low latency transactions.
+- **Private Order Flow**: Natively integrated ZK-based shielded transactions for privacy in orders.
+- **Gasless**: Gasless transactions for the most optimal UX.
 
 ## Repository Structure
 
